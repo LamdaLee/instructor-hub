@@ -1,0 +1,23 @@
+# 기존 출결앱/Caddy와 함께 실행: docker compose --env-file ../.env -p instructor-hub up -d --build
+services:
+  hub-app:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL을 설정하세요}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET을 설정하세요}
+      APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN을 설정하세요}
+    expose:
+      - "3000"
+    networks:
+      - caddy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:-caddy}

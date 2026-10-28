@@ -103,10 +103,17 @@ export function validSave(kind, data) {
           typeof r === "object" &&
           isUuid(r.class_id) &&
           isDate(r.day) &&
+          (r.hours == null ||
+            (typeof r.hours === "number" &&
+              Number.isFinite(r.hours) &&
+              r.hours >= 0 &&
+              r.hours <= 24)) &&
           (!r.id || isUuid(r.id)) &&
           (!r.instructor_id || isUuid(r.instructor_id)) &&
           [
             "period",
+            "module",
+            "review_reason",
             "subject",
             "instructor_name",
             "organization",

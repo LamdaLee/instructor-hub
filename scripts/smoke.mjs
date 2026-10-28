@@ -93,6 +93,8 @@ try {
     class_id: classId,
     day: "2099-01-06",
     subject: "스모크 과목",
+    module: "스모크 모듈",
+    hours: 8,
     instructor_id: person,
     organization: "LGE",
     place: "가상 교실",
@@ -107,6 +109,8 @@ try {
   });
   const slots = await json("/api/read?view=slots&class_id=" + classId);
   assert.equal(slots.rows[0].place, "수정 교실");
+  assert.equal(slots.rows[0].module, "스모크 모듈");
+  assert.equal(slots.rows[0].hours, 8);
   res = await request("/api/read?view=slots&from=2026-02-30");
   assert.equal(res.status, 400);
   await json("/api/read?view=dashboard&cohort=999");

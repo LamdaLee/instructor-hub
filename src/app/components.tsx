@@ -47,7 +47,9 @@ export function DataTable({
 export const slotColumns: [string, string, ((r: Row) => React.ReactNode)?][] = [
   ["day", "날짜"],
   ["class_name", "반"],
-  ["subject", "과목"],
+  ["subject", "교과목"],
+  ["module", "모듈"],
+  ["hours", "시수"],
   [
     "instructor_name",
     "강사",
@@ -67,6 +69,7 @@ export const slotColumns: [string, string, ((r: Row) => React.ReactNode)?][] = [
   ["place", "장소"],
   ["period", "시간"],
   ["note", "메모"],
+  ["review_reason", "확인 필요"],
   [
     "conflict",
     "중복",
@@ -133,6 +136,7 @@ export function SlotEditor({
           );
           const row = {
             ...d,
+            hours: d.hours === "" ? null : Number(d.hours),
             id: slot?.id,
             class_id: slot?.class_id ?? d.class_id,
             day: slot?.day ?? d.day,
@@ -202,6 +206,36 @@ export function SlotEditor({
           />
         </label>
         <label>
+          모듈
+          <input
+            name="module"
+            list="module-options"
+            defaultValue={slot?.module ?? ""}
+            maxLength={2000}
+          />
+        </label>
+        <label>
+          시수
+          <input
+            name="hours"
+            type="number"
+            min={0}
+            max={24}
+            step={0.25}
+            defaultValue={slot?.hours ?? ""}
+          />
+        </label>
+        <datalist id="module-options">
+          {options.modules?.map((m: Row) => (
+            <option
+              key={m.track + ":" + m.subject + ":" + m.name}
+              value={m.name}
+            >
+              {m.subject} · {m.hours}시간
+            </option>
+          ))}
+        </datalist>
+        <label>
           강사
           <select name="instructor_id" defaultValue={slot?.instructor_id ?? ""}>
             <option value="">미배정 / 원문 유지</option>
@@ -252,6 +286,15 @@ export function SlotEditor({
             defaultValue={slot?.note ?? ""}
             maxLength={2000}
           />
+        </label>
+        <label className="wide">
+          확인 필요 사유
+          <input
+            name="review_reason"
+            defaultValue={slot?.review_reason ?? ""}
+            maxLength={2000}
+          />
+          <small>확인이 끝났을 때만 비워서 저장하세요.</small>
         </label>
         {error && (
           <p className="error" role="alert">

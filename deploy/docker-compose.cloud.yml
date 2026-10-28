@@ -1,0 +1,10 @@
+# 관리형 클라우드의 CA 프록시를 사용하는 빌드에만 추가합니다.
+# docker compose --env-file ../.env -f docker-compose.yml -f docker-compose.cloud.yml build
+services:
+  hub-app:
+    build:
+      secrets:
+        - proxy_ca
+secrets:
+  proxy_ca:
+    file: ${CODEX_PROXY_CERT:?클라우드 프록시 CA 경로가 필요합니다}

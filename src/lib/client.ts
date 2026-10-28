@@ -12,7 +12,12 @@ export const messages: Record<string, string> = {
   server_error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.",
 };
 export async function api(view: string, filter: Record<string, string> = {}) {
-  const query = new URLSearchParams({ view, ...Object.fromEntries(Object.entries(filter).filter(([, value]) => value !== "")) });
+  const query = new URLSearchParams({
+    view,
+    ...Object.fromEntries(
+      Object.entries(filter).filter(([, value]) => value !== ""),
+    ),
+  });
   const res = await fetch("/api/read?" + query, { cache: "no-store" });
   const r = await res.json();
   if (!r.ok) throw new Error(messages[r.code] ?? messages.server_error);
@@ -43,4 +48,6 @@ export function monday(day: string) {
   return moveDay(day, -((d.getUTCDay() + 6) % 7));
 }
 
-export function classLabel(c: Row): string { return `${c.region} ${c.track} ${c.cohort}기 · ${c.name}`; }
+export function classLabel(c: Row): string {
+  return `${c.region} ${c.track} ${c.cohort}기 · ${c.source_code ?? c.name}`;
+}

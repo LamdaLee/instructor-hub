@@ -70,6 +70,8 @@ test("데스크톱·모바일: 로그인, 시간표 편집·붙여 넣기, 강�
     .selectOption(classId);
   await dialog.getByLabel("날짜", { exact: true }).fill("2099-01-06");
   await dialog.getByLabel("과목", { exact: true }).fill("E2E 과목");
+  await dialog.getByLabel("모듈", { exact: true }).fill("E2E 모듈");
+  await dialog.getByLabel("시수", { exact: true }).fill("8");
   await dialog
     .getByRole("combobox", { name: "강사", exact: true })
     .selectOption(person);

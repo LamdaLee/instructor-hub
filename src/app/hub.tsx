@@ -1,7 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { api, post, today, monday, moveDay, classLabel, type Row } from "@/lib/client";
+import {
+  api,
+  post,
+  today,
+  monday,
+  moveDay,
+  classLabel,
+  type Row,
+} from "@/lib/client";
 import {
   DataTable,
   slotColumns,
@@ -116,7 +124,7 @@ export default function Hub({
   const nav = (v: string) =>
     "/?" + new URLSearchParams({ ...baseFilter, view: v });
   const rows: Row[] = data?.rows ?? [];
-  const classNames = new Map(rows.map(r => [r.class_id, r.class_name]));
+  const classNames = new Map(rows.map((r) => [r.class_id, r.class_name]));
   const instructorColumns: [string, string, ((r: Row) => React.ReactNode)?][] =
     [
       [
@@ -382,44 +390,42 @@ export default function Hub({
                       (day) => (
                         <tr key={day}>
                           <th>{day}</th>
-                          {[...classNames.keys()].map(
-                            (c) => (
-                              <td key={c} data-label={classNames.get(c)}>
-                                {rows
-                                  .filter(
-                                    (r) => r.day === day && r.class_id === c,
-                                  )
-                                  .map((r) => (
-                                    <div key={r.id}>
-                                      <b>{r.subject || r.kind}</b>
-                                      <p>
-                                        {r.instructor_id ? (
-                                          <a
-                                            href={
-                                              "/?view=instructor&id=" +
-                                              r.instructor_id
-                                            }
-                                          >
-                                            {r.linked_name || r.instructor_name}
-                                          </a>
-                                        ) : (
-                                          r.instructor_name || "미배정"
-                                        )}{" "}
-                                        · {r.organization ?? r.kind}
-                                      </p>
-                                      <button
-                                        className="secondary"
-                                        onClick={() =>
-                                          setEditor({ kind: "slot", row: r })
-                                        }
-                                      >
-                                        수정
-                                      </button>
-                                    </div>
-                                  ))}
-                              </td>
-                            ),
-                          )}
+                          {[...classNames.keys()].map((c) => (
+                            <td key={c} data-label={classNames.get(c)}>
+                              {rows
+                                .filter(
+                                  (r) => r.day === day && r.class_id === c,
+                                )
+                                .map((r) => (
+                                  <div key={r.id}>
+                                    <b>{r.subject || r.kind}</b>
+                                    <p>
+                                      {r.instructor_id ? (
+                                        <a
+                                          href={
+                                            "/?view=instructor&id=" +
+                                            r.instructor_id
+                                          }
+                                        >
+                                          {r.linked_name || r.instructor_name}
+                                        </a>
+                                      ) : (
+                                        r.instructor_name || "미배정"
+                                      )}{" "}
+                                      · {r.organization ?? r.kind}
+                                    </p>
+                                    <button
+                                      className="secondary"
+                                      onClick={() =>
+                                        setEditor({ kind: "slot", row: r })
+                                      }
+                                    >
+                                      수정
+                                    </button>
+                                  </div>
+                                ))}
+                            </td>
+                          ))}
                         </tr>
                       ),
                     )}
@@ -550,9 +556,7 @@ export default function Hub({
                   <strong>
                     {
                       new Set(
-                        rows
-                          .filter((r) => r.class_id === c)
-                          .map((r) => r.day),
+                        rows.filter((r) => r.class_id === c).map((r) => r.day),
                       ).size
                     }
                     일

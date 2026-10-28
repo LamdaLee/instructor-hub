@@ -19,10 +19,13 @@ do $$ declare r jsonb; a bytea:=decode(repeat('11',32),'hex'); m bytea:=decode(r
  r:=hub.api_save(m,'organization','{"name":"권한없음"}');assert r->>'code'='forbidden','운영진 관리 변경 차단';
  r:=hub.api_read(m,'instructors','{"q":"가상강사","archived":""}');assert not (r->'rows'->0 ? 'phone') and not (r->'rows'->0 ? 'email'),'목록 연락처 비공개';
  r:=hub.api_read(m,'instructor','{"id":"00000000-0000-0000-0000-000000000021"}');assert r->'instructor'->>'phone'='가상연락처','상세 연락처';
- payload:='{"rows":[{"class_id":"00000000-0000-0000-0000-000000000011","day":"2099-01-05","subject":"테스트 과목","instructor_id":"00000000-0000-0000-0000-000000000021","organization":"LGE"}]}';
+ payload:='{"rows":[{"class_id":"00000000-0000-0000-0000-000000000011","day":"2099-01-05","subject":"테스트 과목","module":"테스트 모듈","hours":8,"review_reason":"엑셀 검토 사유","instructor_id":"00000000-0000-0000-0000-000000000021","organization":"LGE"}]}';
  r:=hub.api_save(m,'slots',payload);assert (r->>'ok')::boolean,'시간표 저장';
  r:=hub.api_save(m,'slots',payload);assert r->>'code'='overwrite_required','덮어쓰기 확인 요구';
- r:=hub.api_save(m,'slots',payload||'{"overwrite":true}');assert (r->>'ok')::boolean,'확인 후 덮어쓰기';
+ r:=hub.api_save(m,'slots',jsonb_set(payload,'{rows,0}',(payload->'rows'->0)-'module'-'hours'-'review_reason')||'{"overwrite":true}');assert (r->>'ok')::boolean,'확인 후 덮어쓰기';
+ r:=hub.api_read(m,'slots','{"cohort":"99","region":"대전"}');assert r->'rows'->0->>'module'='테스트 모듈' and (r->'rows'->0->>'hours')::numeric=8,'부분 편집 시 모듈·시수 보존';
+ assert r->'rows'->0->>'review_reason'='엑셀 검토 사유','일반 수정 시 검토 사유 보존';
+ r:=hub.api_save(m,'slots',jsonb_set(payload,'{rows,0,hours}','25')||'{"overwrite":true}');assert r->>'code'='bad_request','잘못된 시수 차단';
  r:=hub.api_save(m,'slots','{"rows":[{"class_id":"00000000-0000-0000-0000-000000000012","day":"2099-01-05","instructor_id":"00000000-0000-0000-0000-000000000021","organization":"LGE"}]}');
  assert (r->>'conflicts')::int=1,'다른 반 같은 날 충돌 경고';
  r:=hub.api_read(m,'slots','{"region":"대전","cohort":"99","track":"TEST","from":"2099-01-05","to":"2099-01-05"}');assert jsonb_array_length(r->'rows')=1,'복합 필터';

@@ -17,9 +17,11 @@
     "import-backup": "node --env-file-if-exists=.env scripts/import-backup",
     "admin": "node --env-file-if-exists=.env scripts/admin.mjs",
     "test:http": "node --env-file-if-exists=.env scripts/smoke.mjs",
-    "test:e2e": "node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test"
+    "test:e2e": "node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
+    "import-workbook": "node --env-file-if-exists=.env scripts/import-workbook.mjs"
   },
   "dependencies": {
+    "exceljs": "4.4.0",
     "next": "^16.4.3",
     "pg": "^8.23.1",
     "react": "^19.3.1",
