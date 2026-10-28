@@ -17,7 +17,7 @@ do $$ declare r jsonb; a bytea:=decode(repeat('11',32),'hex'); m bytea:=decode(r
  r:=hub.api_login('hub-test-member@example.invalid','test-password-2026',m,'test-ip');assert (r->>'ok')::boolean,'운영진 로그인';
  r:=hub.api_read(m,'operators','{}');assert r->>'code'='forbidden','운영진 계정 조회 권한';
  r:=hub.api_save(m,'organization','{"name":"권한없음"}');assert r->>'code'='forbidden','운영진 관리 변경 차단';
- r:=hub.api_read(m,'instructors','{"q":"가상강사"}');assert not (r->'rows'->0 ? 'phone') and not (r->'rows'->0 ? 'email'),'목록 연락처 비공개';
+ r:=hub.api_read(m,'instructors','{"q":"가상강사","archived":""}');assert not (r->'rows'->0 ? 'phone') and not (r->'rows'->0 ? 'email'),'목록 연락처 비공개';
  r:=hub.api_read(m,'instructor','{"id":"00000000-0000-0000-0000-000000000021"}');assert r->'instructor'->>'phone'='가상연락처','상세 연락처';
  payload:='{"rows":[{"class_id":"00000000-0000-0000-0000-000000000011","day":"2099-01-05","subject":"테스트 과목","instructor_id":"00000000-0000-0000-0000-000000000021","organization":"LGE"}]}';
  r:=hub.api_save(m,'slots',payload);assert (r->>'ok')::boolean,'시간표 저장';

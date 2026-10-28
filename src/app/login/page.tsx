@@ -1,3 +1,62 @@
-'use client';
-import {useState} from 'react';import {post} from '@/lib/client';
-export default function Login(){const [error,setError]=useState('');const [busy,setBusy]=useState(false);return <main className="login"><div className="brand">강사 허브 <small>운영진 전용</small></div><h1>로그인</h1><p>운영진 계정으로 강사와 시간표를 관리합니다.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');const d=new FormData(e.currentTarget);try{await post('login',{email:d.get('email'),password:d.get('password')});location.assign('/');}catch(err){setError((err as Error).message);}finally{setBusy(false);}}}><label>이메일<input name="email" type="email" autoComplete="username" required maxLength={320}/></label><label>비밀번호<input name="password" type="password" autoComplete="current-password" required maxLength={200}/></label><button disabled={busy}>{busy?'확인 중…':'로그인'}</button>{error&&<p role="alert" className="error">{error}</p>}</form></main>;}
+"use client";
+import { useState } from "react";
+import { post } from "@/lib/client";
+export default function Login() {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <main className="login">
+      <div className="brand">
+        강사 허브 <small>운영진 전용</small>
+      </div>
+      <h1>로그인</h1>
+      <p>운영진 계정으로 강사와 시간표를 관리합니다.</p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          const d = new FormData(e.currentTarget);
+          try {
+            await post("login", {
+              email: d.get("email"),
+              password: d.get("password"),
+            });
+            location.assign("/");
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          이메일
+          <input
+            name="email"
+            type="email"
+            autoComplete="username"
+            required
+            maxLength={320}
+          />
+        </label>
+        <label>
+          비밀번호
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            maxLength={200}
+          />
+        </label>
+        <button disabled={busy}>{busy ? "확인 중…" : "로그인"}</button>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+      </form>
+    </main>
+  );
+}
