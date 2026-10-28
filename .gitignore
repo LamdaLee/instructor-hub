@@ -7,3 +7,8 @@ node_modules/
 *.backup.gz
 *.dump
 backup/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+*.review.json
