@@ -195,25 +195,39 @@ header.portal-header {
   max-width: 860px;
   margin: 0 auto 28px;
 }
-.mosaic-grid {
+.region-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 23px;
+  grid-template-columns: repeat(var(--region-count, 3), minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
 }
-.mosaic-column {
+.region-column {
   min-width: 0;
+  display: grid;
+  gap: 12px;
+  margin: 0;
 }
-.mosaic-column > div {
-  margin-bottom: 22px;
+.region-column-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 18px;
+  margin: 0;
+  padding: 0 4px 6px;
+  border-bottom: 2px solid #c2e8df;
 }
-.mosaic-column.column-0 {
-  padding-top: 38px;
+.region-column-title small {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
 }
-.mosaic-column.column-2 {
-  padding-top: 76px;
+.region-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 14px 4px;
 }
 .course-card {
-  border-radius: 29px;
+  border-radius: 18px;
   background: var(--course-bg);
   color: var(--course-ink);
   overflow: hidden;
@@ -256,58 +270,58 @@ header.portal-header {
 }
 /* 이미지 없이 반·수업 내용이 먼저 보이도록 카드 본문을 강조한다. */
 .course-content {
-  padding: 22px 22px 22px;
+  padding: 14px 16px;
   text-align: left;
 }
 .course-location {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   background: var(--plate);
   color: inherit;
   border: 0;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 4px 10px;
 }
 .course-content h2 {
-  font-size: 26px;
-  line-height: 1.15;
-  margin: 14px 0 18px;
-  letter-spacing: -0.7px;
+  font-size: 18px;
+  line-height: 1.2;
+  margin: 8px 0 10px;
+  letter-spacing: -0.4px;
   color: inherit;
 }
 .course-lecture {
-  border-radius: 15px;
+  border-radius: 12px;
   background: var(--plate);
-  padding: 16px 16px;
+  padding: 10px 12px;
   text-align: left;
 }
 .course-lecture > p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.8;
 }
 .lesson-content + .lesson-content {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid currentColor;
   border-top-color: color-mix(in srgb, currentColor 20%, transparent);
 }
 .lesson-content small {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   opacity: 0.8;
 }
 .lesson-content h3 {
-  font-size: 19px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.35;
-  margin: 4px 0 6px;
+  margin: 2px 0 4px;
   color: inherit;
 }
 .lesson-content p {
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 4px 0 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 2px 0 6px;
   opacity: 0.85;
 }
 .lesson-person {
@@ -370,24 +384,29 @@ header.portal-header {
 .course-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 17px 0 14px;
+  gap: 8px;
+  padding: 10px 0 10px;
   font-size: 11px;
 }
 .course-info b {
   display: block;
-  font-size: 14px;
-  margin-top: 5px;
+  font-size: 13px;
+  margin-top: 2px;
 }
 .course-card .teacher-link {
-  font-size: 16px;
+  font-size: 14px;
+}
+.course-card .lesson-person {
+  margin-top: 6px;
 }
 .course-actions {
   display: grid;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 .course-actions button {
-  min-height: 36px;
+  min-height: 30px;
+  padding: 4px 8px;
   background: #ffffffed;
   color: #385d54;
   border: 0;
@@ -397,9 +416,6 @@ header.portal-header {
   background: transparent;
   color: inherit;
   border: 1px solid #ffffff40;
-}
-.desktop-notice {
-  margin-top: 22px;
 }
 .notice-card {
   border: 1px solid #e9d886;
@@ -467,35 +483,43 @@ header.portal-header {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
-.remaining-notices {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+.dashboard-notices {
+  margin: 0 0 22px;
 }
-.mobile-notices {
-  display: none;
+.dashboard-notices h2 {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+.dashboard-notices .notice-card {
+  padding: 14px 16px;
+}
+.dashboard-notices .notice-card h3 {
+  margin: 8px 0 6px;
 }
 .resource-tile {
   background: #f3f5f5;
-  border-radius: 27px;
-  text-align: center;
-  padding: 38px 20px;
+  border-radius: 18px;
+  padding: 16px 20px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .resource-tile small {
   font-size: 11px;
   color: var(--muted);
 }
 .resource-tile h2 {
-  font-size: 31px;
-  margin: 16px 0;
+  font-size: 20px;
+  margin: 4px 0;
 }
 .resource-tile p {
   font-size: 12px;
   color: var(--muted);
 }
 .resource-tile button {
-  width: 100%;
-  margin-top: 14px;
+  flex: 0 0 auto;
 }
 .portal-regions {
   border-radius: 27px;
@@ -849,14 +873,8 @@ html {
   .admin-access {
     margin-left: auto;
   }
-  .course-content {
-    padding: 12px 16px 20px;
-  }
-  .course-content h2 {
-    font-size: 21px;
-  }
-  .mosaic-grid {
-    gap: 17px;
+  .region-board {
+    gap: 12px;
   }
 }
 @media (max-width: 700px) {
@@ -917,53 +935,14 @@ html {
   .portal-filters select {
     width: 100%;
   }
-  .mosaic-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-  .mosaic-column.column-0,
-  .mosaic-column.column-2 {
-    padding-top: 0;
-  }
-  .mosaic-column {
-    display: contents;
-  }
-  .mosaic-column > div {
-    margin-bottom: 20px;
-  }
-  .desktop-notice,
-  .remaining-notices {
-    display: none;
-  }
-  .course-content {
-    padding: 15px 22px 23px;
-  }
-  .course-content h2 {
-    font-size: 25px;
-  }
-  .course-content .lesson-content h3 {
-    font-size: 20px;
-  }
-  .course-info {
-    font-size: 12px;
-  }
-  .course-info b {
-    font-size: 15px;
+  .region-board {
+    grid-template-columns: 1fr;
+    gap: 22px;
   }
   .course-actions button {
-    font-size: 13px;
-    min-height: 40px;
+    min-height: 36px;
   }
-  .mobile-notices {
-    display: block;
-    margin: 20px 0 25px;
-  }
-  .mobile-notices h2 {
-    font-size: 17px;
-    margin-bottom: 13px;
-  }
-  .mobile-notices .notice-grid {
+  .dashboard-notices .notice-grid {
     display: grid;
     grid-template-columns: none;
     grid-auto-flow: column;
@@ -973,7 +952,7 @@ html {
     padding-bottom: 7px;
     gap: 12px;
   }
-  .mobile-notices .notice-card {
+  .dashboard-notices .notice-card {
     scroll-snap-align: start;
     min-width: 0;
   }

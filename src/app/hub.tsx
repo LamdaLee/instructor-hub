@@ -189,6 +189,15 @@ export default function Hub({
       (!filter.track || c.track === filter.track) &&
       (!filter.class_id || c.id === filter.class_id),
   );
+  const regionOrder = ["대전", "대구", "부산"];
+  const boardRegions = filter.region
+    ? [filter.region]
+    : [
+        ...regionOrder,
+        ...[...new Set(classes.map((c) => String(c.region)))]
+          .filter((r) => !regionOrder.includes(r))
+          .sort(),
+      ];
   const navigate = (v: string) => update({ view: v, class_id: "", q: "" });
   const teacherButton = (r: Row) => (
     <button
@@ -533,50 +542,51 @@ export default function Hub({
         {loading && <p role="status">불러오는 중…</p>}
         {view === "dashboard" && (
           <>
-            <div className="mobile-notices">
+            <div className="dashboard-notices">
               <h2>공지사항</h2>
               <div className="notice-grid">
                 {notices.map(noticeCard)}
                 {!notices.length && <p>등록된 공지사항 없음</p>}
               </div>
             </div>
-            <div className="mosaic-grid">
-              {[0, 1, 2].map((column) => (
-                <div className={"mosaic-column column-" + column} key={column}>
-                  {classes
-                    .filter((_, i) => i % 3 === column)
-                    .map((c, i) => (
-                      <div key={c.id}>
-                        {courseCard(c, column + i * 3)}
-                        {notices[column + i * 3] && (
-                          <div className="desktop-notice">
-                            {noticeCard(
-                              notices[column + i * 3],
-                              column + i * 3,
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  {column === 1 && (
-                    <article className="resource-tile">
-                      <small>교재 자료실</small>
-                      <h2>PDF · PPTX</h2>
-                      <p>과목별 · 강사별 자료</p>
-                      <button
-                        className="secondary"
-                        onClick={() => navigate("materials")}
-                      >
-                        자료실 열기 →
-                      </button>
-                    </article>
-                  )}
-                </div>
-              ))}
+            {/* 지역별 세로 열: 대전 왼쪽, 대구 가운데, 부산 오른쪽 */}
+            <div
+              className="region-board"
+              style={
+                {
+                  "--region-count": boardRegions.length,
+                } as React.CSSProperties
+              }
+            >
+              {boardRegions.map((region) => {
+                const list = classes.filter((c) => c.region === region);
+                return (
+                  <section className="region-column" key={region}>
+                    <h2 className="region-column-title">
+                      {region}
+                      <small>{list.length}개 반</small>
+                    </h2>
+                    {list.map((c) => courseCard(c, classes.indexOf(c)))}
+                    {!list.length && (
+                      <p className="region-empty">진행 중인 과정 없음</p>
+                    )}
+                  </section>
+                );
+              })}
             </div>
-            <div className="remaining-notices">
-              {notices.slice(classes.length).map(noticeCard)}
-            </div>
+            <article className="resource-tile">
+              <div>
+                <small>교재 자료실</small>
+                <h2>PDF · PPTX</h2>
+                <p>과목별 · 강사별 자료</p>
+              </div>
+              <button
+                className="secondary"
+                onClick={() => navigate("materials")}
+              >
+                자료실 열기 →
+              </button>
+            </article>
             {!loading && !classes.length && (
               <p className="empty">조건에 맞는 과정이 없습니다.</p>
             )}
