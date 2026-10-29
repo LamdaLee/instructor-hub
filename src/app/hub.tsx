@@ -98,7 +98,7 @@ export default function Hub({
   if (filter.cohort === "all") filter.cohort = "";
   if (
     !params.has("cohort") &&
-    ["dashboard", "slots", "region"].includes(view) &&
+    ["slots", "region"].includes(view) &&
     options
   ) {
     const activeClasses = (options.classes as Row[]).filter((c) => c.active);
@@ -188,7 +188,9 @@ export default function Hub({
       (!filter.region || c.region === filter.region) &&
       (!filter.cohort || String(c.cohort) === filter.cohort) &&
       (!filter.track || c.track === filter.track) &&
-      (!filter.class_id || c.id === filter.class_id),
+      (!filter.class_id || c.id === filter.class_id) &&
+      (view !== "dashboard" ||
+        rows.some((r) => r.class_id === c.id && r.day === date && r.kind === "수업")),
   );
   const navigate = (v: string) => update({ view: v, class_id: "", q: "" });
   const teacherButton = (r: Row) => (
@@ -247,7 +249,10 @@ export default function Hub({
     </article>
   );
   const lessons = (c: Row, d: string) =>
-    rows.filter((r) => r.class_id === c.id && r.day === d);
+    rows.filter(
+      (r) => r.class_id === c.id && r.day === d &&
+        (view !== "dashboard" || r.kind === "수업"),
+    );
   const lessonCard = (r: Row) => (
     <div className="lesson-content" key={r.id}>
       <small>
@@ -435,6 +440,7 @@ export default function Hub({
               <br />
               <span>아카데미</span>
             </h1>
+            <p className="portal-today">오늘 있는 과목을 한눈에 확인하세요.</p>
             <div className="inline centered">
               <label>
                 <span className="sr-only">수업 조회 날짜</span>
@@ -575,7 +581,7 @@ export default function Hub({
               {notices.slice(classes.length).map(noticeCard)}
             </div>
             {!loading && !classes.length && (
-              <p className="empty">조건에 맞는 과정이 없습니다.</p>
+              <p className="empty">선택한 날짜와 조건에 맞는 수업이 없습니다.</p>
             )}
             <section className="portal-regions">
               <h2>지역별 시간표</h2>
