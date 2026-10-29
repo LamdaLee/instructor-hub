@@ -195,10 +195,57 @@ export function validSave(kind, data) {
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) &&
       data.email.length <= 320 &&
       ["admin", "member"].includes(data.role) &&
+      (data.organization == null || text(data.organization, 200)) &&
       typeof data.active === "boolean" &&
       (!data.password ||
         (typeof data.password === "string" &&
           new TextEncoder().encode(data.password).length <= 72))
     );
   return true;
+}
+const ORGS = ["aSSIST", "CLIPS", "LGE", "LAB4DX"];
+const text = (v, max, required = false) =>
+  v == null
+    ? !required
+    : typeof v === "string" && v.length <= max && (!required || !!v.trim());
+export function validSignup(d) {
+  return (
+    !!d &&
+    typeof d === "object" &&
+    !Array.isArray(d) &&
+    typeof d.email === "string" &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) &&
+    d.email.length <= 320 &&
+    text(d.name, 80, true) &&
+    ORGS.includes(d.organization) &&
+    typeof d.password === "string" &&
+    d.password.length >= 10 &&
+    new TextEncoder().encode(d.password).length <= 72
+  );
+}
+// 기관 계정 API: 조회(GET)와 신청·처리(POST)를 나눠 검사한다.
+export function validOrg(action, d, mutation) {
+  if (!d || typeof d !== "object" || Array.isArray(d)) return false;
+  if (!mutation)
+    return (
+      ["instructors", "requests", "signups"].includes(action) &&
+      Object.entries(d).every(([k, v]) => k === "q" && text(v, 100))
+    );
+  if (action === "submit")
+    return (
+      text(d.note, 2000, true) &&
+      ((d.kind === "remove" && isUuid(d.instructor_id)) ||
+        (d.kind === "register" &&
+          text(d.name, 100, true) &&
+          text(d.phone, 50) &&
+          text(d.email, 254) &&
+          (d.organization == null || ORGS.includes(d.organization))))
+    );
+  if (["decide", "decide_signup"].includes(action))
+    return (
+      isUuid(d.id) &&
+      ["approve", "reject"].includes(d.decision) &&
+      text(d.note, 2000, d.decision === "reject")
+    );
+  return false;
 }

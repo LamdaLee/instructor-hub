@@ -1,12 +1,14 @@
 export type Row = Record<string, any>;
 export const messages: Record<string, string> = {
   invalid_credentials: "이메일 또는 비밀번호를 확인하세요.",
-  rate_limited: "로그인 시도가 많습니다. 15분 뒤 다시 시도하세요.",
+  rate_limited: "요청이 많습니다. 15분 뒤 다시 시도하세요.",
   session_expired: "로그인이 만료되었습니다.",
   forbidden: "이 작업을 수행할 권한이 없습니다.",
   overwrite_required:
     "같은 반·날짜의 시간표가 있습니다. 미리보기를 확인하고 덮어쓰기를 선택하세요.",
   bad_request: "입력값을 확인하세요.",
+  duplicate: "같은 내용으로 처리 대기 중인 신청이나 계정이 이미 있습니다.",
+  already_decided: "이미 처리된 신청입니다. 목록을 새로고침하세요.",
   last_admin: "마지막 활성 관리자는 비활성화하거나 권한을 변경할 수 없습니다.",
   weak_password: "비밀번호는 10자 이상, UTF-8 기준 72바이트 이하여야 합니다.",
   invalid_file: "PDF 또는 PPTX 파일 형식과 내용을 확인하세요.",

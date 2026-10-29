@@ -10,13 +10,7 @@ export default async function Page() {
   if (!raw || !/^[0-9a-f]{64}$/.test(raw)) redirect("/admin/login");
   const me = await callApi("api_me", [hashToken(raw)]);
   if (!me.ok) redirect("/admin/login");
-  if ((me.operator as { role: string }).role !== "admin")
-    return (
-      <main>
-        <h1>관리자 권한이 필요합니다.</h1>
-        <a href="/">공개 화면으로</a>
-      </main>
-    );
+  if ((me.operator as { role: string }).role !== "admin") redirect("/org");
   return (
     <Suspense fallback={<p>불러오는 중…</p>}>
       <Hub adminMode operator={me.operator as { name: string; role: string }} />

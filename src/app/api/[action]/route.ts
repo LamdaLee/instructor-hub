@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { callApi, type Result } from "@/lib/db";
 import { COOKIE, hashToken, newToken } from "@/lib/session";
-import { validFilter, validSave, csvCell } from "@/lib/input.mjs";
+import {
+  validFilter,
+  validSave,
+  validOrg,
+  validSignup,
+  csvCell,
+} from "@/lib/input.mjs";
 export const dynamic = "force-dynamic";
 const statuses: Record<string, number> = {
   bad_request: 400,
@@ -12,6 +18,8 @@ const statuses: Record<string, number> = {
   rate_limited: 429,
   overwrite_required: 409,
   last_admin: 409,
+  duplicate: 409,
+  already_decided: 409,
   weak_password: 422,
 };
 function response(r: Result) {
@@ -92,6 +100,15 @@ async function handle(
         });
       return res;
     }
+    if (action === "signup" && mutation) {
+      if (!validSignup(data)) return response({ ok: false, code: "bad_request" });
+      return response(
+        await callApi("api_signup", [
+          data,
+          req.headers.get("x-real-ip") ?? "unknown",
+        ]),
+      );
+    }
     const raw = cookie(req);
     const token = raw ? hashToken(raw) : null;
     if (action === "me" && !mutation)
@@ -111,6 +128,23 @@ async function handle(
       if (typeof data.kind !== "string" || !validSave(data.kind, data.data))
         return response({ ok: false, code: "bad_request" });
       return response(await callApi("api_save", [token, data.kind, data.data]));
+    }
+    if (action === "org") {
+      // 조회는 GET, 신청·승인·반려는 POST로만 받는다.
+      const orgAction = mutation
+        ? data.action
+        : url.searchParams.get("action");
+      const payload = mutation
+        ? data.data
+        : Object.fromEntries(
+            [...url.searchParams].filter(([k]) => k !== "action"),
+          );
+      if (
+        typeof orgAction !== "string" ||
+        !validOrg(orgAction, payload, mutation)
+      )
+        return response({ ok: false, code: "bad_request" });
+      return response(await callApi("api_org", [token, orgAction, payload]));
     }
     if (["read", "export"].includes(action) && !mutation) {
       const filter = Object.fromEntries(

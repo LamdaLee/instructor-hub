@@ -7,7 +7,9 @@ type FunctionName =
   | "api_logout"
   | "api_read"
   | "api_save"
-  | "api_material";
+  | "api_material"
+  | "api_org"
+  | "api_signup";
 const globalPool = globalThis as unknown as { hubPool?: Pool };
 export async function callApi(
   name: FunctionName,

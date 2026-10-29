@@ -397,6 +397,11 @@ export default function Hub({
             </button>
           ))}
         </nav>
+        {adminMode && (
+          <a className="admin-access" href="/org">
+            기관 승인
+          </a>
+        )}
         {adminMode ? (
           <button
             className="admin-access"
@@ -409,7 +414,7 @@ export default function Hub({
           </button>
         ) : (
           <a className="admin-access" href="/admin">
-            관리자
+            로그인
           </a>
         )}
       </header>
