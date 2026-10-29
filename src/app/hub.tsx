@@ -1,56 +1,116 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import {
-  api,
-  post,
-  today,
-  monday,
-  moveDay,
-  classLabel,
-  type Row,
-} from "@/lib/client";
-import {
-  DataTable,
-  slotColumns,
-  SlotEditor,
-  InstructorEditor,
-  PasteEditor,
-} from "./components";
-import { Dashboard, Reports } from "./overview";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api, post, today, monday, moveDay, type Row } from "@/lib/client";
+import { isDate } from "@/lib/input.mjs";
+import { courseArt } from "@/lib/course-art";
+import { Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
 import Admin from "./admin";
+import {
+  Materials,
+  AnnouncementEditor,
+  TeacherModal,
+  InstructorPaste,
+} from "./portal-editors";
+const trackName = (t: string) =>
+  t.startsWith("AX")
+    ? "AX Workflow"
+    : t === "SF"
+      ? "Smart Factory"
+      : t === "DM"
+        ? "Digital Marketing"
+        : t;
+export function Org({ name }: { name?: string }) {
+  return (
+    <span
+      className={
+        "org-badge org-" +
+        (name === "LGE"
+          ? "lge"
+          : name === "LAB4DX"
+            ? "lab"
+            : name === "CLIPS"
+              ? "clips"
+              : name === "aSSIST"
+                ? "assist"
+                : "other")
+      }
+    >
+      {name === "LGE" ? "LG전자" : name || "소속 미등록"}
+    </span>
+  );
+}
+const days = (from: string, to: string) => {
+  const list = [];
+  for (let d = from; d <= to && list.length < 366; d = moveDay(d, 1))
+    list.push(d);
+  return list;
+};
+const weekday = (d: string) =>
+  ["일", "월", "화", "수", "목", "금", "토"][
+    new Date(d + "T12:00:00Z").getUTCDay()
+  ];
 export default function Hub({
   operator,
+  adminMode = false,
 }: {
-  operator: { name: string; role: string };
+  operator: { name: string; role: string } | null;
+  adminMode?: boolean;
 }) {
-  const params = useSearchParams();
-  const router = useRouter();
-  const query = params.toString();
-  const view = params.get("view") ?? "dashboard";
-  const [options, setOptions] = useState<Row>();
-  const [data, setData] = useState<Row>();
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ kind: string; row?: Row }>();
-  const [compare, setCompare] = useState(false);
-  const baseFilter = Object.fromEntries(
-    ["region", "cohort", "track", "organization"].map((k) => [
+  const params = useSearchParams(),
+    router = useRouter(),
+    query = params.toString();
+  const requestedView = params.get("view");
+  const view =
+    requestedView === "instructor"
+      ? "instructors"
+      : requestedView || (adminMode ? "manage" : "dashboard");
+  const [options, setOptions] = useState<Row>(),
+    [rows, setRows] = useState<Row[]>([]),
+    [notices, setNotices] = useState<Row[]>([]),
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true),
+    [revision, setRevision] = useState(0),
+    [editor, setEditor] = useState<{ kind: string; row?: Row }>(),
+    [teacher, setTeacher] = useState<string | undefined>(
+      params.get("view") === "instructor"
+        ? params.get("id") || undefined
+        : undefined,
+    ),
+    [mobile, setMobile] = useState("track");
+  const [date, setDate] = useState(today());
+  const [from, setFrom] = useState(
+      isDate(params.get("from")) ? params.get("from")! : monday(today()),
+    ),
+    [to, setTo] = useState(
+      isDate(params.get("to"))
+        ? params.get("to")!
+        : moveDay(monday(today()), 4),
+    );
+  const isAdmin = adminMode && operator?.role === "admin";
+  const filter = Object.fromEntries(
+    ["region", "cohort", "track", "organization", "class_id", "q"].map((k) => [
       k,
-      params.get(k) ?? "",
+      params.get(k) || "",
     ]),
   );
-  const week = params.get("from") ?? monday(today());
-  const update = (change: Record<string, string>) => {
+  const update = (changes: Record<string, string>) => {
     const p = new URLSearchParams(query);
-    for (const [k, v] of Object.entries(change)) {
+    for (const [k, v] of Object.entries(changes)) {
       if (v) p.set(k, v);
       else p.delete(k);
     }
-    router.replace("/?" + p);
+    router.replace((adminMode ? "/admin" : "/") + "?" + p);
   };
-  const refresh = () => setRevision((r) => r + 1);
+  const refresh = () => setRevision((n) => n + 1);
+  useEffect(() => {
+    setFrom(isDate(params.get("from")) ? params.get("from")! : monday(today()));
+    setTo(
+      isDate(params.get("to"))
+        ? params.get("to")!
+        : moveDay(monday(today()), 4),
+    );
+  }, [query]);
   useEffect(() => {
     let active = true;
     api("options")
@@ -66,53 +126,38 @@ export default function Hub({
   }, [revision]);
   useEffect(() => {
     let active = true;
-    setLoading(true);
     setError("");
-    const filter = { ...baseFilter };
-    let target = view;
-    if (view === "slots") {
-      filter.from = week;
-      filter.to = moveDay(week, 6);
-      filter.class_id = params.get("class_id") ?? "";
-    }
-    if (view === "instructors") {
-      filter.q = params.get("q") ?? "";
-      filter.subject = params.get("subject") ?? "";
-      filter.archived = params.get("archived") ?? "";
-    }
-    if (view === "instructor") {
-      filter.id = params.get("id") ?? "";
-    }
-    if (view === "dashboard") {
-      filter.from = monday(today());
-      filter.to = moveDay(monday(today()), 6);
-    }
-    if (view === "reports") {
-      filter.from = params.get("from") ?? "";
-      filter.to = params.get("to") ?? "";
-    }
-    if (view === "admin") {
-      setData({});
-      setLoading(false);
-      return () => {
-        active = false;
-      };
-    }
-    if (
-      !["slots", "instructors", "instructor", "dashboard", "reports"].includes(
-        view,
-      )
-    )
-      target = "slots";
-    api(target, filter)
-      .then((d) => {
-        if (active) setData(d);
+    setLoading(true);
+    setRows([]);
+    const request =
+      view === "instructors"
+        ? api("instructors", filter)
+        : ["dashboard", "slots", "region"].includes(view)
+          ? api("slots", {
+              ...filter,
+              from:
+                view === "dashboard"
+                  ? date
+                  : isDate(params.get("from"))
+                    ? params.get("from")!
+                    : monday(today()),
+              to:
+                view === "dashboard"
+                  ? date
+                  : isDate(params.get("to"))
+                    ? params.get("to")!
+                    : moveDay(monday(today()), 4),
+            })
+          : Promise.resolve({ rows: [] });
+    Promise.all([request, api("announcements", { region: filter.region })])
+      .then(([d, n]) => {
+        if (active) {
+          setRows(d.rows || []);
+          setNotices(n.rows || []);
+        }
       })
       .catch((e) => {
-        if (active) {
-          setError(e.message);
-          setData(undefined);
-        }
+        if (active) setError(e.message);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -120,90 +165,285 @@ export default function Hub({
     return () => {
       active = false;
     };
-  }, [query, revision]); // URL 필터가 조회와 공유의 기준이다.
-  const nav = (v: string) =>
-    "/?" + new URLSearchParams({ ...baseFilter, view: v });
-  const rows: Row[] = data?.rows ?? [];
-  const classNames = new Map(rows.map((r) => [r.class_id, r.class_name]));
-  const instructorColumns: [string, string, ((r: Row) => React.ReactNode)?][] =
-    [
-      [
-        "name",
-        "이름",
-        (r) => (
-          <a href={"/?view=instructor&id=" + r.id}>
-            {r.name}
-            {r.archived_at ? " (보관)" : ""}
-          </a>
-        ),
-      ],
-      ["organization", "기관"],
-      [
-        "subjects",
-        "담당 과목",
-        (r) => [...new Set([...r.subjects, ...r.taught_subjects])].join(", "),
-      ],
-      ["regions", "지역"],
-      ["classes", "반"],
-      ["total_days", "수업일수"],
-      ["last_day", "최근 수업"],
-      ["next_day", "다음 수업"],
-    ];
-  const group = params.get("group") ?? "";
-  const groups: Record<string, Row[]> = {};
-  if (view === "instructors" && group)
-    for (const r of rows) {
-      const keys =
-        group === "organization"
-          ? [r.organization ?? "기관 없음"]
-          : [...new Set([...r.subjects, ...r.taught_subjects])];
-      for (const key of keys.length ? keys : ["과목 없음"])
-        (groups[String(key)] ??= []).push(r);
-    }
-  return (
-    <>
-      <header>
-        <div>
-          <a className="brand" href="/">
-            강사 허브
-          </a>
-          <small>내부 운영진</small>
-        </div>
+  }, [query, revision, date]);
+  const classes: Row[] = (options?.classes || []).filter(
+    (c: Row) =>
+      c.active &&
+      (!filter.region || c.region === filter.region) &&
+      (!filter.cohort || String(c.cohort) === filter.cohort) &&
+      (!filter.track || c.track === filter.track) &&
+      (!filter.class_id || c.id === filter.class_id),
+  );
+  const navigate = (v: string) => update({ view: v, class_id: "", q: "" });
+  const teacherButton = (r: Row) => (
+    <button
+      className="teacher-link"
+      onClick={() => {
+        if (r.instructor_id || (r.id && view === "instructors"))
+          setTeacher(r.instructor_id || r.id);
+      }}
+      disabled={!r.instructor_id && view !== "instructors"}
+    >
+      {r.linked_name || r.instructor_name || r.name || "미배정"}
+    </button>
+  );
+  const noticeCard = (n: Row, i: number) => (
+    <article className={"notice-card notice-" + (i % 3)} key={n.id}>
+      <div className="notice-top">
+        <span>{n.region || "전체"}</span>
+        {n.important && <b>중요</b>}
+        <small>공지사항</small>
+      </div>
+      <h3>{n.title}</h3>
+      <p>{n.body}</p>
+      <small>
+        {new Date(n.updated_at).toLocaleDateString("ko-KR", {
+          timeZone: "Asia/Seoul",
+        })}
+      </small>
+      {isAdmin && (
         <div className="inline">
-          <span>{operator.name}</span>
+          <button
+            className="secondary"
+            onClick={() => setEditor({ kind: "announcement", row: n })}
+          >
+            수정
+          </button>
           <button
             className="secondary"
             onClick={async () => {
+              if (!confirm("이 공지를 삭제할까요?")) return;
               try {
-                await post("logout", {});
-                location.assign("/login");
+                await post("save", {
+                  kind: "announcement",
+                  data: { id: n.id, delete: true },
+                });
+                refresh();
               } catch (e) {
                 setError((e as Error).message);
               }
             }}
           >
-            로그아웃
+            삭제
           </button>
         </div>
-      </header>
-      <nav aria-label="주 메뉴">
-        {[
-          ["dashboard", "대시보드"],
-          ["slots", "시간표"],
-          ["instructors", "강사"],
-          ["reports", "집계"],
-          ...(operator.role === "admin" ? [["admin", "관리"]] : []),
-        ].map(([v, label]) => (
-          <a key={v} className={view === v ? "active" : ""} href={nav(v)}>
-            {label}
+      )}
+    </article>
+  );
+  const lessons = (c: Row, d: string) =>
+    rows.filter((r) => r.class_id === c.id && r.day === d);
+  const lessonCard = (r: Row) => (
+    <div className="lesson-content" key={r.id}>
+      <small>
+        {r.period || ""}
+        {r.hours ? " · " + r.hours + "시간" : ""}
+      </small>
+      <h3>{r.subject || r.kind}</h3>
+      {r.module && <p>{r.module}</p>}
+      <div className="lesson-person">
+        {teacherButton(r)}
+        <Org name={r.organization} />
+        <span className="assignment">{r.assignment_status}</span>
+      </div>
+      {r.note && <div className="cell-note">{r.note}</div>}
+      {isAdmin && (
+        <div className="inline">
+          <button
+            className="secondary"
+            onClick={() => setEditor({ kind: "slot", row: r })}
+          >
+            수업·메모 수정
+          </button>
+          <button
+            className="secondary"
+            onClick={async () => {
+              if (!confirm("수업을 삭제할까요? 변경 기록은 보존됩니다."))
+                return;
+              try {
+                await post("save", { kind: "delete_slot", data: { id: r.id } });
+                refresh();
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
+    </div>
+  );
+  const courseCard = (c: Row, i: number) => (
+    <article className={"course-card tone-" + (i % 7)} key={c.id}>
+      <div
+        className="course-artboard"
+        aria-hidden="true"
+        dangerouslySetInnerHTML={{
+          __html: courseArt({
+            id: c.id,
+            track: c.track.startsWith("AX") ? "AX" : c.track,
+          }),
+        }}
+      />
+      <div className="course-content">
+        <button
+          className="course-location"
+          onClick={() =>
+            update({
+              view: "region",
+              region: c.region,
+              cohort: String(c.cohort),
+              track: "",
+              class_id: "",
+            })
+          }
+        >
+          {c.region} · {c.name} · {c.cohort}기
+        </button>
+        <h2>{trackName(c.track)}</h2>
+        <div className="course-lecture">
+          {lessons(c, date).length ? (
+            lessons(c, date).map(lessonCard)
+          ) : (
+            <p>등록된 수업 없음</p>
+          )}
+        </div>
+        <div className="course-info">
+          <span>
+            담당 매니저<b>{c.manager || "미등록"}</b>
+          </span>
+          <span>
+            강의장
+            <b>
+              {lessons(c, date).find((r) => r.place)?.place ||
+                c.room ||
+                "미등록"}
+            </b>
+          </span>
+        </div>
+        <div className="course-actions">
+          <button
+            onClick={() =>
+              update({
+                view: "materials",
+                q: lessons(c, date)[0]?.subject || "",
+              })
+            }
+          >
+            교재 확인 →
+          </button>
+          <button
+            onClick={() =>
+              update({
+                view: "region",
+                region: c.region,
+                track: c.track,
+                cohort: String(c.cohort),
+                class_id: c.id,
+              })
+            }
+          >
+            반 시간표 →
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+  const displayDates = days(
+    isDate(params.get("from")) ? params.get("from")! : monday(today()),
+    isDate(params.get("to")) ? params.get("to")! : moveDay(monday(today()), 4),
+  );
+  const nav = [
+    ["dashboard", "수업 현황"],
+    ["slots", "전체 시간표"],
+    ["region", "지역별 시간표"],
+    ["instructors", "강사 정보"],
+    ["materials", "교재 자료실"],
+    ...(isAdmin
+      ? [
+          ["announcements", "공지 관리"],
+          ["manage", "과정·변경 기록"],
+        ]
+      : []),
+  ];
+  return (
+    <>
+      <header className="portal-header">
+        <a className="portal-brand" href="/">
+          <b>LG</b>
+          <span>
+            <strong>LG전자 K-뉴딜 아카데미</strong>
+            <small>과정 운영</small>
+          </span>
+        </a>
+        <nav aria-label="주 메뉴">
+          {nav.map(([v, n]) => (
+            <button
+              className={view === v ? "active" : ""}
+              key={v}
+              onClick={() => navigate(v)}
+            >
+              {n}
+            </button>
+          ))}
+        </nav>
+        {adminMode ? (
+          <button
+            className="admin-access"
+            onClick={async () => {
+              await post("logout", {});
+              location.assign("/");
+            }}
+          >
+            로그아웃
+          </button>
+        ) : (
+          <a className="admin-access" href="/admin">
+            관리자
           </a>
-        ))}
-      </nav>
-      <main>
-        <section className="filters" aria-label="공통 필터">
-          {options && (
-            <>
-              {[
+        )}
+      </header>
+      <main
+        className={"portal-main " + (view === "dashboard" ? "portal-home" : "")}
+      >
+        {view === "dashboard" ? (
+          <section className="portal-intro">
+            <small>과정 운영</small>
+            <h1>
+              LG전자 K-뉴딜
+              <br />
+              <span>아카데미</span>
+            </h1>
+            <div className="inline centered">
+              <label>
+                <span className="sr-only">수업 조회 날짜</span>
+                <input
+                  type="date"
+                  aria-label="수업 조회 날짜"
+                  value={date}
+                  onChange={(e) => {
+                    if (e.target.value) setDate(e.target.value);
+                  }}
+                />
+              </label>
+              <button onClick={() => navigate("slots")}>전체 시간표 →</button>
+              <button className="secondary" onClick={() => navigate("region")}>
+                지역별 시간표 →
+              </button>
+            </div>
+          </section>
+        ) : (
+          <div className="portal-page-title">
+            <h1>
+              {nav.find(([v]) => v === view)?.[1] || "아카데미 운영 관리"}
+            </h1>
+            {isAdmin && <small>관리자 · {operator?.name}</small>}
+          </div>
+        )}
+        {!["materials", "announcements", "manage"].includes(view) && (
+          <section className="filters portal-filters" aria-label="조회 필터">
+            {options &&
+              [
                 ["region", "지역", options.regions],
                 [
                   "cohort",
@@ -217,366 +457,454 @@ export default function Hub({
                 [
                   "track",
                   "트랙",
-                  [...new Set(options.classes.map((c: Row) => c.track))].sort(),
+                  [...new Set(options.classes.map((c: Row) => c.track))],
                 ],
                 ["organization", "기관", options.organizations],
               ].map(([key, label, values]) => (
                 <label key={String(key)}>
                   {String(label)}
                   <select
-                    value={params.get(String(key)) ?? ""}
-                    onChange={(e) => update({ [String(key)]: e.target.value })}
+                    value={filter[String(key)]}
+                    onChange={(e) =>
+                      update({ [String(key)]: e.target.value, class_id: "" })
+                    }
                   >
                     <option value="">전체</option>
                     {(values as string[]).map((v) => (
                       <option key={v} value={v}>
-                        {v}
-                        {key === "cohort" ? "기" : ""}
+                        {String(key) === "cohort" ? v + "기" : v}
                       </option>
                     ))}
                   </select>
                 </label>
               ))}
-            </>
-          )}
-        </section>
-        {error && (
-          <p role="alert" className="error">
-            {error}{" "}
-            <button className="secondary" onClick={refresh}>
-              다시 시도
+            <button
+              className="secondary"
+              onClick={() =>
+                update({
+                  region: "",
+                  cohort: "",
+                  track: "",
+                  organization: "",
+                  class_id: "",
+                  q: "",
+                })
+              }
+            >
+              필터 초기화
             </button>
+          </section>
+        )}
+        {error && (
+          <p className="error" role="alert">
+            {error} <button onClick={refresh}>다시 시도</button>
           </p>
         )}
         {loading && <p role="status">불러오는 중…</p>}
-        {view === "dashboard" && data && <Dashboard data={data} />}
-        {view === "reports" && options && (
-          <Reports
-            data={data ?? { rows: [] }}
-            options={options}
-            filter={{
-              ...baseFilter,
-              from: params.get("from") ?? "",
-              to: params.get("to") ?? "",
-            }}
-            update={update}
-          />
-        )}
-        {view === "admin" &&
-          options &&
-          (operator.role === "admin" ? (
-            <Admin options={options} onDone={refresh} revision={revision} />
-          ) : (
-            <p role="alert" className="error">
-              관리자만 접근할 수 있습니다.
-            </p>
-          ))}
-        {view === "slots" && options && (
+        {view === "dashboard" && (
           <>
-            <div className="title-row">
-              <div>
-                <h1>주간 시간표</h1>
-                <p>
-                  {week} — {moveDay(week, 6)}
-                </p>
+            <div className="mobile-notices">
+              <h2>공지사항</h2>
+              <div className="notice-grid">
+                {notices.map(noticeCard)}
+                {!notices.length && <p>등록된 공지사항 없음</p>}
               </div>
+            </div>
+            <div className="mosaic-grid">
+              {[0, 1, 2].map((column) => (
+                <div className={"mosaic-column column-" + column} key={column}>
+                  {classes
+                    .filter((_, i) => i % 3 === column)
+                    .map((c, i) => (
+                      <div key={c.id}>
+                        {courseCard(c, column + i * 3)}
+                        {notices[column + i * 3] && (
+                          <div className="desktop-notice">
+                            {noticeCard(
+                              notices[column + i * 3],
+                              column + i * 3,
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  {column === 1 && (
+                    <article className="resource-tile">
+                      <small>교재 자료실</small>
+                      <h2>PDF · PPTX</h2>
+                      <p>과목별 · 강사별 자료</p>
+                      <button
+                        className="secondary"
+                        onClick={() => navigate("materials")}
+                      >
+                        자료실 열기 →
+                      </button>
+                    </article>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="remaining-notices">
+              {notices.slice(classes.length).map(noticeCard)}
+            </div>
+            {!loading && !classes.length && (
+              <p className="empty">조건에 맞는 과정이 없습니다.</p>
+            )}
+            <section className="portal-regions">
+              <h2>지역별 시간표</h2>
+              <div>
+                {["대전", "대구", "부산"].map((r) => (
+                  <button
+                    className="secondary"
+                    key={r}
+                    onClick={() =>
+                      update({
+                        view: "region",
+                        region: r,
+                        track: "",
+                        class_id: "",
+                        cohort: "",
+                      })
+                    }
+                  >
+                    {r} →
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+        {["slots", "region"].includes(view) && (
+          <>
+            {view === "region" && (
+              <div className="region-switch">
+                {["대전", "대구", "부산"].map((r) => (
+                  <button
+                    className={filter.region === r ? "" : "secondary"}
+                    key={r}
+                    onClick={() =>
+                      update({ region: r, class_id: "", track: "" })
+                    }
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
+            <form
+              className="schedule-range"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (
+                  from > to ||
+                  days(from, to).length > 366 ||
+                  (new Date(to).valueOf() - new Date(from).valueOf()) /
+                    86400000 >
+                    365
+                ) {
+                  setError("시작일 이후 최대 366일 범위로 설정하세요.");
+                  return;
+                }
+                update({ from, to });
+              }}
+            >
+              <label>
+                시작일
+                <input
+                  type="date"
+                  required
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
+              </label>
+              <span>–</span>
+              <label>
+                종료일
+                <input
+                  type="date"
+                  required
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                />
+              </label>
+              <button>기간 적용</button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => update({ from, to: moveDay(from, 6) })}
+              >
+                1주
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  const d = new Date(from + "T12:00:00Z"),
+                    day = d.getUTCDate();
+                  d.setUTCMonth(d.getUTCMonth() + 1, 1);
+                  const last = new Date(
+                    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0),
+                  ).getUTCDate();
+                  d.setUTCDate(Math.min(day, last));
+                  update({
+                    from,
+                    to: moveDay(d.toISOString().slice(0, 10), -1),
+                  });
+                }}
+              >
+                1개월
+              </button>
+            </form>
+            <div className="section-head">
               <div className="inline">
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    update({ from: moveDay(from, -7), to: moveDay(to, -7) })
+                  }
+                >
+                  ← 이전 주
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    update({
+                      from: monday(today()),
+                      to: moveDay(monday(today()), 4),
+                    })
+                  }
+                >
+                  이번 주
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    update({ from: moveDay(from, 7), to: moveDay(to, 7) })
+                  }
+                >
+                  다음 주 →
+                </button>
+              </div>
+              <a
+                className="secondary"
+                href={
+                  "/api/export?" + new URLSearchParams({ ...filter, from, to })
+                }
+              >
+                엑셀 CSV 내려받기
+              </a>
+            </div>
+            {isAdmin && (
+              <div className="toolbar">
                 <button onClick={() => setEditor({ kind: "slot" })}>
-                  시간표 추가
+                  수업 추가
                 </button>
                 <button
                   className="secondary"
                   onClick={() => setEditor({ kind: "paste" })}
                 >
-                  엑셀 붙여 넣기
+                  시간표 엑셀 붙여 넣기
                 </button>
               </div>
-            </div>
-            <section className="toolbar">
-              <button
-                className="secondary"
-                onClick={() => update({ from: moveDay(week, -7) })}
-              >
-                ← 이전 주
-              </button>
-              <button
-                className="secondary"
-                onClick={() => update({ from: monday(today()) })}
-              >
-                오늘
-              </button>
-              <button
-                className="secondary"
-                onClick={() => update({ from: moveDay(week, 7) })}
-              >
-                다음 주 →
-              </button>
-              <label>
-                주간 날짜
-                <input
-                  type="date"
-                  value={week}
-                  onChange={(e) => {
-                    if (e.target.value)
-                      update({ from: monday(e.target.value) });
-                  }}
-                />
-              </label>
-              <label>
-                반
-                <select
-                  value={params.get("class_id") ?? ""}
-                  onChange={(e) => update({ class_id: e.target.value })}
-                >
-                  <option value="">모든 반</option>
-                  {options.classes
-                    .filter(
-                      (c: Row) =>
-                        (!baseFilter.region ||
-                          c.region === baseFilter.region) &&
-                        (!baseFilter.cohort ||
-                          String(c.cohort) === baseFilter.cohort) &&
-                        (!baseFilter.track || c.track === baseFilter.track),
-                    )
-                    .map((c: Row) => (
-                      <option key={c.id} value={c.id}>
-                        {classLabel(c)}
-                      </option>
+            )}
+            <div className="schedule-shell">
+              <table className="schedule-table">
+                <caption className="sr-only">
+                  지역·트랙 행과 날짜·요일 열 시간표
+                </caption>
+                <thead>
+                  <tr>
+                    <th>지역</th>
+                    <th>트랙 · 반</th>
+                    {displayDates.map((d) => (
+                      <th key={d}>
+                        {d.slice(5).replace("-", ".")}
+                        <small>{weekday(d)}요일</small>
+                      </th>
                     ))}
-                </select>
-              </label>
-              <label className="inline">
-                <input
-                  type="checkbox"
-                  checked={compare}
-                  onChange={(e) => setCompare(e.target.checked)}
-                />
-                여러 반 비교
-              </label>
-            </section>
-            {!compare ? (
-              <DataTable
-                rows={rows}
-                columns={[
-                  ...slotColumns,
-                  [
-                    "edit",
-                    "편집",
-                    (r) => (
-                      <button
-                        className="secondary"
-                        onClick={() => setEditor({ kind: "slot", row: r })}
-                      >
-                        수정
-                      </button>
-                    ),
-                  ],
-                ]}
-              />
-            ) : (
-              <div className="comparison">
-                <table>
-                  <caption>지역·반별 같은 날짜 비교</caption>
-                  <thead>
-                    <tr>
-                      <th>날짜</th>
-                      {[...classNames.keys()].map((c) => (
-                        <th key={c}>{classNames.get(c)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classes.map((c, i) => (
+                    <tr
+                      className={
+                        i === 0 || classes[i - 1].region !== c.region
+                          ? "region-start"
+                          : ""
+                      }
+                      key={c.id}
+                    >
+                      {(i === 0 || classes[i - 1].region !== c.region) && (
+                        <th
+                          className="region-row"
+                          scope="rowgroup"
+                          rowSpan={
+                            classes.filter((x) => x.region === c.region).length
+                          }
+                        >
+                          {c.region}
+                        </th>
+                      )}
+                      <th className="track-row" scope="row">
+                        {trackName(c.track)}
+                        <small>
+                          {c.name} · {c.cohort}기
+                        </small>
+                      </th>
+                      {displayDates.map((d) => (
+                        <td key={d}>
+                          {lessons(c, d).length ? (
+                            lessons(c, d).map(lessonCard)
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
                       ))}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: 7 }, (_, n) => moveDay(week, n)).map(
-                      (day) => (
-                        <tr key={day}>
-                          <th>{day}</th>
-                          {[...classNames.keys()].map((c) => (
-                            <td key={c} data-label={classNames.get(c)}>
-                              {rows
-                                .filter(
-                                  (r) => r.day === day && r.class_id === c,
-                                )
-                                .map((r) => (
-                                  <div key={r.id}>
-                                    <b>{r.subject || r.kind}</b>
-                                    <p>
-                                      {r.instructor_id ? (
-                                        <a
-                                          href={
-                                            "/?view=instructor&id=" +
-                                            r.instructor_id
-                                          }
-                                        >
-                                          {r.linked_name || r.instructor_name}
-                                        </a>
-                                      ) : (
-                                        r.instructor_name || "미배정"
-                                      )}{" "}
-                                      · {r.organization ?? r.kind}
-                                    </p>
-                                    <button
-                                      className="secondary"
-                                      onClick={() =>
-                                        setEditor({ kind: "slot", row: r })
-                                      }
-                                    >
-                                      수정
-                                    </button>
-                                  </div>
-                                ))}
-                            </td>
-                          ))}
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-                {!rows.length && <p>조건에 맞는 데이터가 없습니다.</p>}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="schedule-mobile">
+              <div className="toolbar">
+                <button
+                  className={mobile === "track" ? "" : "secondary"}
+                  onClick={() => setMobile("track")}
+                >
+                  트랙별 보기
+                </button>
+                <button
+                  className={mobile === "date" ? "" : "secondary"}
+                  onClick={() => setMobile("date")}
+                >
+                  날짜별 보기
+                </button>
               </div>
+              {(mobile === "track" ? classes : displayDates).map(
+                (item: any, i) => (
+                  <details
+                    key={mobile === "track" ? item.id : item}
+                    open={i === 0}
+                  >
+                    <summary>
+                      {mobile === "track"
+                        ? `${item.region} · ${trackName(item.track)} · ${item.cohort}기`
+                        : item + " " + weekday(item) + "요일"}
+                    </summary>
+                    {(mobile === "track"
+                      ? displayDates.flatMap((d) => lessons(item, d))
+                      : classes.flatMap((c) => lessons(c, item))
+                    ).map((r) => (
+                      <article key={r.id}>
+                        <small>
+                          {r.day} · {r.class_name}
+                        </small>
+                        {lessonCard(r)}
+                      </article>
+                    ))}
+                  </details>
+                ),
+              )}
+            </div>
+            {!loading && !rows.length && (
+              <p className="empty">
+                선택한 기간·조건에 등록된 수업이 없습니다.
+              </p>
             )}
           </>
         )}
-        {view === "instructors" && options && (
+        {view === "instructors" && (
           <>
-            <div className="title-row">
-              <h1>
-                강사 <small>{rows.length}명</small>
-              </h1>
-              <button onClick={() => setEditor({ kind: "instructor" })}>
-                강사 추가
-              </button>
-            </div>
             <form
               className="toolbar"
               onSubmit={(e) => {
                 e.preventDefault();
-                const d = new FormData(e.currentTarget);
-                update({ q: String(d.get("q")) });
+                update({
+                  q: String(new FormData(e.currentTarget).get("q") || ""),
+                });
               }}
             >
               <label>
-                이름 검색
-                <input name="q" defaultValue={params.get("q") ?? ""} />
+                강사 검색
+                <input name="q" defaultValue={filter.q} />
               </label>
-              <button className="secondary">검색</button>
-              <label>
-                과목
-                <select
-                  value={params.get("subject") ?? ""}
-                  onChange={(e) => update({ subject: e.target.value })}
-                >
-                  <option value="">전체</option>
-                  {options.subjects.map((s: Row) => (
-                    <option key={s.name}>{s.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                묶어 보기
-                <select
-                  value={group}
-                  onChange={(e) => update({ group: e.target.value })}
-                >
-                  <option value="">전체 목록</option>
-                  <option value="organization">기관별</option>
-                  <option value="subject">과목별</option>
-                </select>
-              </label>
-              <label className="inline">
-                <input
-                  type="checkbox"
-                  checked={params.get("archived") === "true"}
-                  onChange={(e) =>
-                    update({ archived: e.target.checked ? "true" : "" })
-                  }
-                />
-                보관 포함
-              </label>
+              <button>검색</button>
+              {isAdmin && (
+                <>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setEditor({ kind: "instructor" })}
+                  >
+                    강사 추가
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setEditor({ kind: "instructor-paste" })}
+                  >
+                    강사 엑셀 붙여 넣기
+                  </button>
+                </>
+              )}
             </form>
-            {group ? (
-              Object.entries(groups)
-                .sort(([a], [b]) => a.localeCompare(b, "ko"))
-                .map(([key, list]) => (
-                  <section key={key}>
-                    <h2>
-                      {key} <small>{list.length}명</small>
-                    </h2>
-                    <DataTable rows={list} columns={instructorColumns} />
-                  </section>
-                ))
-            ) : (
-              <DataTable rows={rows} columns={instructorColumns} />
-            )}
-          </>
-        )}
-        {view === "instructor" && data?.instructor && (
-          <>
-            <div className="title-row">
-              <div>
-                <a href={nav("instructors")}>← 강사 목록</a>
-                <h1>
-                  {data.instructor.name}{" "}
-                  <small>
-                    {data.instructor.organization}
-                    {data.instructor.archived_at ? " · 보관됨" : ""}
-                  </small>
-                </h1>
-              </div>
-              <button
-                onClick={() =>
-                  setEditor({ kind: "instructor", row: data.instructor })
-                }
-              >
-                강사 수정
-              </button>
-            </div>
-            <section className="detail">
-              <dl>
-                <dt>연락처</dt>
-                <dd>{data.instructor.phone || "미등록"}</dd>
-                <dt>이메일</dt>
-                <dd>{data.instructor.email || "미등록"}</dd>
-                <dt>담당 과목</dt>
-                <dd>
+            {rows.map((p) => (
+              <article className="teacher-summary" key={p.id}>
+                {teacherButton(p)}
+                <Org name={p.organization} />
+                <p>
                   {[
                     ...new Set([
-                      ...data.instructor.subjects,
-                      ...rows.map((r) => r.subject).filter(Boolean),
+                      ...(p.subjects || []),
+                      ...(p.taught_subjects || []),
                     ]),
-                  ].join(", ") || "미등록"}
-                </dd>
-                <dt>메모</dt>
-                <dd>{data.instructor.memo || "없음"}</dd>
-              </dl>
-            </section>
-            <h2>반별 수업일수</h2>
-            <div className="stats">
-              {[...classNames.keys()].map((c) => (
-                <div key={c}>
-                  <strong>
-                    {
-                      new Set(
-                        rows.filter((r) => r.class_id === c).map((r) => r.day),
-                      ).size
-                    }
-                    일
-                  </strong>
-                  {classNames.get(c)}
-                </div>
-              ))}
-            </div>
-            <h2>수업 달력</h2>
-            <InstructorCalendar rows={rows} />
-            <h2>전체 수업 일정</h2>
-            <DataTable rows={rows} columns={slotColumns} />
+                  ].join(", ")}
+                </p>
+                <button className="secondary" onClick={() => setTeacher(p.id)}>
+                  상세 정보
+                </button>
+                {isAdmin && (
+                  <button
+                    className="secondary"
+                    onClick={async () => {
+                      try {
+                        const d = await api("instructor", { id: p.id });
+                        setEditor({ kind: "instructor", row: d.instructor });
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    수정·보관
+                  </button>
+                )}
+              </article>
+            ))}
           </>
         )}
-        <datalist id="subject-options">
-          {options?.subjects.map((s: Row) => (
-            <option key={s.name} value={s.name} />
-          ))}
-        </datalist>
-        {editor?.kind === "slot" && options && (
+        {view === "materials" && options && (
+          <Materials
+            options={options}
+            admin={!!isAdmin}
+            query={filter.q}
+            onTeacher={setTeacher}
+          />
+        )}
+        {isAdmin && view === "announcements" && (
+          <>
+            <div className="section-head">
+              <h2>공지사항</h2>
+              <button onClick={() => setEditor({ kind: "announcement" })}>
+                공지 등록
+              </button>
+            </div>
+            <div className="notice-grid">{notices.map(noticeCard)}</div>
+          </>
+        )}
+        {isAdmin && view === "manage" && options && (
+          <Admin options={options} revision={revision} onDone={refresh} />
+        )}
+        {options && editor?.kind === "slot" && (
           <SlotEditor
             slot={editor.row}
             options={options}
@@ -584,15 +912,15 @@ export default function Hub({
             close={() => setEditor(undefined)}
           />
         )}
-        {editor?.kind === "paste" && options && (
+        {options && editor?.kind === "paste" && (
           <PasteEditor
             options={options}
-            classId={params.get("class_id") ?? ""}
+            classId={filter.class_id}
             onDone={refresh}
             close={() => setEditor(undefined)}
           />
         )}
-        {editor?.kind === "instructor" && options && (
+        {options && editor?.kind === "instructor" && (
           <InstructorEditor
             instructor={editor.row}
             options={options}
@@ -600,55 +928,36 @@ export default function Hub({
             close={() => setEditor(undefined)}
           />
         )}
+        {options && editor?.kind === "instructor-paste" && (
+          <InstructorPaste
+            options={options}
+            onDone={refresh}
+            close={() => setEditor(undefined)}
+          />
+        )}
+        {editor?.kind === "announcement" && isAdmin && (
+          <AnnouncementEditor
+            row={editor.row}
+            onDone={refresh}
+            close={() => setEditor(undefined)}
+          />
+        )}
+        {teacher && (
+          <TeacherModal id={teacher} close={() => setTeacher(undefined)} />
+        )}
       </main>
-      <footer>강사 허브 · 운영진 전용</footer>
-    </>
-  );
-}
-function InstructorCalendar({ rows }: { rows: Row[] }) {
-  const [month, setMonth] = useState(today().slice(0, 7));
-  const start = month + "-01";
-  const next = new Date(start + "T00:00:00Z");
-  next.setUTCMonth(next.getUTCMonth() + 1);
-  const days = Number(moveDay(next.toISOString().slice(0, 10), -1).slice(-2));
-  const offset = (new Date(start + "T00:00:00Z").getUTCDay() + 6) % 7;
-  return (
-    <>
-      <label>
-        조회 월
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => {
-            if (e.target.value) setMonth(e.target.value);
-          }}
-        />
-      </label>
-      <div className="calendar">
-        {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
-          <b key={d}>{d}</b>
+      <nav className="mobile-nav" aria-label="모바일 메뉴">
+        {nav.map(([v, n]) => (
+          <button
+            key={v}
+            className={view === v ? "active" : ""}
+            onClick={() => navigate(v)}
+          >
+            {n}
+          </button>
         ))}
-        {Array.from({ length: offset }, (_, i) => (
-          <div key={"empty" + i} />
-        ))}
-        {Array.from({ length: days }, (_, n) => {
-          const day = month + "-" + String(n + 1).padStart(2, "0");
-          return (
-            <div key={day} className={day === today() ? "today" : ""}>
-              <b>{n + 1}</b>
-              {rows
-                .filter((r) => r.day === day)
-                .map((r) => (
-                  <p key={r.id}>
-                    {r.class_name}
-                    <br />
-                    {r.subject}
-                  </p>
-                ))}
-            </div>
-          );
-        })}
-      </div>
+      </nav>
+      <footer>LG전자 K-뉴딜 아카데미</footer>
     </>
   );
 }

@@ -47,7 +47,7 @@ try {
     [classId],
   );
   let res = await request("/api/read?view=instructors", null, false);
-  assert.equal(res.status, 401);
+  assert.equal(res.status, 200);
   res = await request(
     "/api/login",
     { email, password },
@@ -68,7 +68,7 @@ try {
   await json("/api/me");
   const page = await request("/");
   assert.equal(page.status, 200);
-  assert.ok((await page.text()).includes("강사 허브"));
+  assert.ok((await page.text()).includes("LG전자 K-뉴딜 아카데미"));
   await json("/api/read?view=options");
   await json("/api/save", {
     kind: "instructor",

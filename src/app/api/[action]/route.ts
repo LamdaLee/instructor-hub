@@ -93,8 +93,7 @@ async function handle(
       return res;
     }
     const raw = cookie(req);
-    if (!raw) return response({ ok: false, code: "session_expired" });
-    const token = hashToken(raw);
+    const token = raw ? hashToken(raw) : null;
     if (action === "me" && !mutation)
       return response(await callApi("api_me", [token]));
     if (action === "logout" && mutation) {
@@ -133,6 +132,8 @@ async function handle(
           "instructor",
           "operators",
           "audit",
+          "announcements",
+          "materials",
         ].includes(view)
       )
         return response({ ok: false, code: "bad_request" });

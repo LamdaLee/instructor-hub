@@ -14,3 +14,6 @@ playwright-report/
 *.review.json
 *.xlsx
 *.xls
+
+/materials/
+/hub-snapshots/

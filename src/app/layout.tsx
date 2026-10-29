@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./portal.css";
 export const metadata: Metadata = {
-  title: "강사 허브",
-  description: "운영진 전용 강사·시간표 관리",
+  title: "LG전자 K-뉴딜 아카데미",
+  description: "지역·트랙별 시간표, 강사 정보와 교재 자료실",
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {

@@ -9,6 +9,9 @@ export const messages: Record<string, string> = {
   bad_request: "입력값을 확인하세요.",
   last_admin: "마지막 활성 관리자는 비활성화하거나 권한을 변경할 수 없습니다.",
   weak_password: "비밀번호는 10자 이상, UTF-8 기준 72바이트 이하여야 합니다.",
+  invalid_file: "PDF 또는 PPTX 파일 형식과 내용을 확인하세요.",
+  file_too_large: "파일은 50 MB 이하로 올려주세요.",
+  storage_full: "자료실 저장 공간이 부족합니다. 관리자에게 문의하세요.",
   server_error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.",
 };
 export async function api(view: string, filter: Record<string, string> = {}) {

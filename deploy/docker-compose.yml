@@ -8,7 +8,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL을 설정하세요}
       DATABASE_SSL: ${DATABASE_SSL:-false}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET을 설정하세요}
+      MATERIALS_DIR: /app/materials
       APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN을 설정하세요}
+    volumes:
+      - hub_materials:/app/materials
     expose:
       - "3000"
     networks:
@@ -21,3 +24,6 @@ networks:
   caddy:
     external: true
     name: ${CADDY_NETWORK:-caddy}
+
+volumes:
+  hub_materials:

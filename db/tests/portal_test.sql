@@ -1,0 +1,33 @@
+-- 공개 조회·업로드와 관리자 전용 변경의 경계를 실제 앱 역할로 검증한다.
+begin;
+insert into hub.operators(id,email,name,password_hash,role) values('00000000-0000-0000-0000-000000000081','portal-admin@example.invalid','가상 관리자','unused','admin'),('00000000-0000-0000-0000-000000000082','portal-member@example.invalid','가상 운영진','unused','member');
+insert into hub.sessions values(decode(repeat('81',32),'hex'),'00000000-0000-0000-0000-000000000081',now()+interval '1 hour'),(decode(repeat('82',32),'hex'),'00000000-0000-0000-0000-000000000082',now()+interval '1 hour');
+insert into hub.subjects(name) values('공개자료 검증 과목');
+insert into hub.instructors(id,name,organization,phone) values('00000000-0000-0000-0000-000000000083','가상 자료 강사','LGE','TEST-CONTACT');
+set local role hub_app;
+do $$ declare a bytea:=decode(repeat('81',32),'hex');m bytea:=decode(repeat('82',32),'hex');r jsonb;v uuid;payload jsonb;begin
+ assert (hub.api_read(null,'options','{}')->>'ok')::boolean,'공개 필터';
+ assert hub.api_read(null,'audit','{}')->>'code'='forbidden','공개 변경 이력 차단';
+ assert hub.api_read(null,'operators','{}')->>'code'='forbidden','계정 비공개';
+ assert hub.api_save(m,'slots','{"rows":[]}')->>'code'='forbidden','운영진 쓰기 차단';
+ assert hub.api_save(null,'announcement','{}')->>'code'='session_expired','공개 공지 변경 차단';
+ assert hub.api_read(null,'instructor','{"id":"00000000-0000-0000-0000-000000000083"}')->'instructor'->>'phone'='TEST-CONTACT','공개 강사 연락처';
+ r:=hub.api_save(a,'announcement','{"title":"가상 공지","body":"검증 내용","region":"대전","important":true}');assert (r->>'ok')::boolean,'공지 등록';
+ v:=(r->>'id')::uuid;
+ assert exists(select 1 from jsonb_array_elements(hub.api_read(null,'announcements','{"region":"대전"}')->'rows') x where x->>'id'=v::text),'지역 공지 조회';
+ assert not exists(select 1 from jsonb_array_elements(hub.api_read(null,'announcements','{"region":"부산"}')->'rows') x where x->>'id'=v::text),'다른 지역 공지 제외';
+ perform hub.api_save(a,'announcement',jsonb_build_object('id',v,'delete',true));
+ payload:='{"subject":"공개자료 검증 과목","instructor_id":"00000000-0000-0000-0000-000000000083","filename":"test.pdf","disk_key":"00000000-0000-0000-0000-000000000084","bytes":10,"mime":"application/pdf","uploader":"가상 등록자","reason":"검증","ip":"portal-test"}';
+ r:=hub.api_material(null,'upload',payload);assert (r->>'ok')::boolean,'비로그인 업로드';v:=(r->>'id')::uuid;
+ assert (hub.api_material(null,'file',jsonb_build_object('id',v))->>'ok')::boolean,'공개 파일 조회';
+ assert hub.api_material(null,'delete',jsonb_build_object('id',v))->>'code'='forbidden','공개 삭제 차단';
+ assert hub.api_material(m,'update',payload||jsonb_build_object('id',v))->>'code'='forbidden','운영진 파일 수정 차단';
+ assert (hub.api_material(a,'update',payload||jsonb_build_object('id',v,'published',false))->>'ok')::boolean,'관리자 수정';
+ assert hub.api_material(null,'file',jsonb_build_object('id',v))->>'code'='not_found','비공개 파일 접근 차단';
+ assert (hub.api_material(a,'delete',jsonb_build_object('id',v))->>'ok')::boolean,'관리자 삭제';
+ assert hub.api_material(a,'file',jsonb_build_object('id',v))->>'code'='not_found','삭제 자료 다운로드 차단';
+ begin perform hub.save_v7(a,'subject','{"name":"우회"}');raise exception '이전 쓰기 함수 공개';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+do $$ begin assert (select count(*) from hub.audit_logs where target_table='materials' and action in ('material_upload','material_update','material_delete'))>=3,'파일 변경 전후 기록';end $$;
+rollback;

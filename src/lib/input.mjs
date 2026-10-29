@@ -92,6 +92,29 @@ export function csvCell(value) {
 export function validSave(kind, data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   if (data.id && !isUuid(data.id)) return false;
+  if (["archive_subject", "rename_subject"].includes(kind))
+    return (
+      typeof data.old_name === "string" &&
+      data.old_name.length > 0 &&
+      data.old_name.length <= 200 &&
+      (kind === "archive_subject" ||
+        (typeof data.name === "string" &&
+          data.name.trim().length > 0 &&
+          data.name.length <= 200))
+    );
+  if (kind === "announcement")
+    return (
+      (!!data.id && data.delete === true) ||
+      (typeof data.title === "string" &&
+        data.title.trim().length > 0 &&
+        data.title.length <= 200 &&
+        typeof data.body === "string" &&
+        data.body.trim().length > 0 &&
+        data.body.length <= 10000 &&
+        (!data.region || ["대전", "대구", "부산"].includes(data.region)) &&
+        typeof data.important === "boolean")
+    );
+  if (kind === "delete_slot") return isUuid(data.id);
   if (kind === "slots")
     return (
       Array.isArray(data.rows) &&
@@ -123,6 +146,8 @@ export function validSave(kind, data) {
             (k) =>
               r[k] == null || (typeof r[k] === "string" && r[k].length <= 2000),
           ) &&
+          (!r.assignment_status ||
+            ["임시", "변경예정", "확정"].includes(r.assignment_status)) &&
           (!r.kind || ["수업", "공통", "휴일", "없음"].includes(r.kind)),
       )
     );

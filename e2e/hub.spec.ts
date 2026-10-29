@@ -30,11 +30,16 @@ test.beforeAll(async () => {
     "INSERT INTO hub.instructors(id,name,organization,phone) VALUES($1,'E2E 가상 강사','LGE','TEST-PRIVATE')",
     [person],
   );
+  await db.query(
+    "INSERT INTO hub.subjects(name) VALUES('E2E 과목') ON CONFLICT DO NOTHING",
+  );
 });
 test.afterAll(async () => {
   if (!db) return;
   await db.query("DELETE FROM hub.sessions WHERE operator_id=$1", [adminId]);
   await db.query("DELETE FROM hub.audit_logs WHERE operator_id=$1", [adminId]);
+  await db.query("DELETE FROM hub.materials WHERE instructor_id=$1", [person]);
+  await db.query("DELETE FROM hub.announcements WHERE title='E2E 운영 공지'");
   await db.query("DELETE FROM hub.slots WHERE class_id=$1", [classId]);
   await db.query("DELETE FROM hub.classes WHERE id=$1", [classId]);
   await db.query("DELETE FROM hub.instructors WHERE id=$1", [person]);
@@ -47,24 +52,104 @@ test.afterAll(async () => {
   ]);
   await db.end();
 });
-test("데스크톱·모바일: 로그인, 시간표 편집·붙여 넣기, 강사 상세, 집계·관리", async ({
+test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리자 변경", async ({
   page,
+  request,
 }) => {
-  await page.goto("/login");
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?cohort=998");
+  await expect(
+    page.getByRole("heading", { name: "LG전자 K-뉴딜 아카데미" }),
+  ).toBeVisible();
+  await expect(page.locator(".course-card")).toHaveCount(1);
+  const noAuth = await request.post("/api/save", {
+    headers: { Origin: origin },
+    data: { kind: "instructor", data: { name: "권한 검증", subjects: [] } },
+  });
+  expect(noAuth.status()).toBe(401);
+  await page.goto(
+    "/?view=instructors&q=" + encodeURIComponent("E2E 가상 강사"),
+  );
+  await page
+    .getByRole("button", { name: "E2E 가상 강사", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("TEST-PRIVATE");
+  await page.screenshot({ path: test.info().outputPath("portal-teacher.png") });
+  expect(page.url()).toContain("view=instructors");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const invalidUpload = await request.post("/api/materials", {
+    headers: { Origin: origin },
+    multipart: {
+      subject: "E2E 과목",
+      instructor_id: person,
+      uploader: "가상 등록자",
+      reason: "형식 검증",
+      file: {
+        name: "fake.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("not a PDF"),
+      },
+    },
+  });
+  expect(invalidUpload.status()).toBe(400);
+  const foreignUpload = await request.post("/api/materials", {
+    headers: { Origin: "https://foreign.example" },
+    multipart: { subject: "E2E 과목" },
+  });
+  expect(foreignUpload.status()).toBe(403);
+  await page.goto("/?view=materials");
+  await expect(page.getByRole("button", { name: "파일 수정" })).toHaveCount(0);
+  await page.getByRole("button", { name: "교재 업로드", exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("combobox", { name: "교과목", exact: true })
+    .selectOption("E2E 과목");
+  await dialog
+    .getByRole("combobox", { name: "강사", exact: true })
+    .selectOption(person);
+  await dialog.getByLabel("등록자 이름").fill("가상 공개 등록자");
+  await dialog.locator("input[type=file]").setInputFiles({
+    name: "E2E-교재.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 E2E"),
+  });
+  await dialog.getByLabel("변경 사유").fill("비로그인 업로드 검증");
+  await dialog.getByRole("button", { name: "업로드", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const card = page
+    .locator(".material-card")
+    .filter({ hasText: "E2E-교재.pdf" });
+  await expect(card).toBeVisible();
+  const wait = page.waitForEvent("download");
+  await card.getByRole("link", { name: "교재 내려받기" }).click();
+  expect((await wait).suggestedFilename()).toBe("E2E-교재.pdf");
+  const material = (
+    await db.query(
+      "select id from hub.materials where filename='E2E-교재.pdf' and instructor_id=$1",
+      [person],
+    )
+  ).rows[0];
+  expect(
+    (
+      await request.delete("/api/materials/" + material.id, {
+        headers: { Origin: origin },
+      })
+    ).status(),
+  ).toBe(403);
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/admin\/login/);
   await page.getByLabel("이메일", { exact: true }).fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByRole("button", { name: "로그인", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "운영 대시보드" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/admin$/);
   await page.goto(
-    `/?view=slots&cohort=998&class_id=${classId}&from=2099-01-05`,
+    `/admin?view=slots&cohort=998&class_id=${classId}&from=2099-01-05&to=2099-01-09`,
   );
-  await expect(
-    page.getByRole("heading", { name: "주간 시간표" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "시간표 추가", exact: true }).click();
-  let dialog = page.getByRole("dialog");
+  await page.getByRole("button", { name: "수업 추가", exact: true }).click();
+  dialog = page.getByRole("dialog");
   await dialog
     .getByRole("combobox", { name: "반", exact: true })
     .selectOption(classId);
@@ -78,61 +163,75 @@ test("데스크톱·모바일: 로그인, 시간표 편집·붙여 넣기, 강�
   await dialog
     .getByRole("combobox", { name: "기관", exact: true })
     .selectOption("LGE");
+  await dialog
+    .getByRole("combobox", { name: "강사 배정 상태", exact: true })
+    .selectOption("확정");
+  await dialog.getByLabel("메모", { exact: true }).fill("가상 준비사항");
   await dialog.getByRole("button", { name: "저장", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(
-    page.getByRole("cell", { name: "E2E 과목", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "수정", exact: true }).click();
-  dialog = page.getByRole("dialog");
-  await dialog.getByLabel("장소", { exact: true }).fill("E2E 검증 교실");
-  await dialog.getByRole("button", { name: "저장", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "E2E 검증 교실" })).toBeVisible();
+  await expect(page.locator(".schedule-table")).toContainText("가상 준비사항");
+  await expect(page.locator(".schedule-table")).toContainText("확정");
+  await page.screenshot({
+    path: "/workspace/portal-timetable-verified.png",
+    fullPage: true,
+  });
+  await page.getByLabel("시작일", { exact: true }).fill("2099-01-06");
+  await page.getByLabel("종료일", { exact: true }).fill("2099-01-07");
+  await page.getByRole("button", { name: "기간 적용", exact: true }).click();
+  await expect(page.locator(".schedule-table thead th")).toHaveCount(4);
+  await page.goto("/admin?view=materials");
   await page
-    .getByRole("button", { name: "엑셀 붙여 넣기", exact: true })
+    .locator(".material-card")
+    .filter({ hasText: "E2E-교재.pdf" })
+    .getByRole("button", { name: "파일 수정" })
     .click();
   dialog = page.getByRole("dialog");
-  await dialog
-    .getByLabel("엑셀 데이터")
-    .fill("2099-01-07\tE2E 과목\tE2E 가상 강사\tLGE\t가상 교실\t가상 메모");
-  await dialog.getByRole("button", { name: "미리보기", exact: true }).click();
-  await expect(dialog.getByRole("cell", { name: "2099-01-07" })).toBeVisible();
-  await dialog.getByRole("button", { name: "1건 저장" }).click();
+  await dialog.locator("input[type=file]").setInputFiles({
+    name: "E2E-수정.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 updated"),
+  });
+  await dialog.getByLabel("변경 사유").fill("파일 교체");
+  await dialog.getByRole("button", { name: "변경 저장" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("cell", { name: "2099-01-07" })).toBeVisible();
-  await page.goto(
-    "/?view=instructors&q=" + encodeURIComponent("E2E 가상 강사"),
+  await expect(page.locator(".material-grid")).toContainText("E2E-수정.pdf");
+  page.once("dialog", (d) => d.accept());
+  await page
+    .locator(".material-card")
+    .filter({ hasText: "E2E-수정.pdf" })
+    .getByRole("button", { name: "삭제", exact: true })
+    .click();
+  await expect(page.locator(".material-grid")).not.toContainText(
+    "E2E-수정.pdf",
   );
-  await expect(
-    page.getByRole("link", { name: "E2E 가상 강사", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("TEST-PRIVATE", { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "E2E 가상 강사", exact: true }).click();
-  await expect(page.getByText("TEST-PRIVATE", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "수업 달력" })).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin?view=announcements");
+  await page.getByRole("button", { name: "공지 등록" }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("제목").fill("E2E 운영 공지");
+  await dialog.getByLabel("내용").fill("가상 운영 공지 내용");
+  await dialog.getByRole("button", { name: "저장", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".notice-grid")).toContainText("E2E 운영 공지");
+  await page.goto("/admin?view=manage");
+  await page.getByRole("button", { name: "변경 기록", exact: true }).click();
+  await expect(page.locator("main")).toContainText("material_update");
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(
-    `/?view=slots&cohort=998&class_id=${classId}&from=2099-01-05`,
+    `/?view=region&cohort=998&region=대전&from=2099-01-05&to=2099-01-09`,
   );
-  await expect(page.getByRole("cell", { name: "E2E 검증 교실" })).toBeVisible();
+  await expect(page.locator(".schedule-mobile")).toBeVisible();
+  await expect(page.locator(".schedule-shell")).not.toBeVisible();
+  await page
+    .getByRole("button", { name: "E2E 가상 강사", exact: true })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("TEST-PRIVATE");
+  await page.keyboard.press("Escape");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.goto("/?view=reports&cohort=998");
-  await expect(
-    page.getByRole("heading", { name: "강사별 수업일수" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "시간표 CSV 다운로드" }),
-  ).toBeVisible();
-  await page.goto("/?view=admin");
-  await expect(
-    page.getByRole("button", { name: "계정 추가", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "반", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "반 관리" })).toBeVisible();
-  await page.getByRole("button", { name: "로그아웃", exact: true }).click();
-  await expect(page).toHaveURL(origin + "/login");
+  expect(errors).toEqual([]);
 });

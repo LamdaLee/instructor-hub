@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { type Row, post, api, classLabel } from "@/lib/client";
 import { parseTsv } from "@/lib/input.mjs";
 export function DataTable({
@@ -85,30 +85,50 @@ export function Modal({
   children: React.ReactNode;
   close: () => void;
 }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    d?.showModal();
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      d?.close();
+      document.body.style.overflow = old;
+    };
+  }, []);
   return (
-    <div
-      className="backdrop"
+    <dialog
+      ref={ref}
+      className="modal"
+      aria-label={title}
+      onCancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) close();
+        if (e.target === e.currentTarget) {
+          const r = e.currentTarget.getBoundingClientRect();
+          if (
+            e.clientX < r.left ||
+            e.clientX > r.right ||
+            e.clientY < r.top ||
+            e.clientY > r.bottom
+          )
+            close();
+        }
       }}
     >
-      <section
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div className="title-row">
-          <h2>{title}</h2>
-          <button type="button" className="secondary" onClick={close}>
-            닫기
-          </button>
-        </div>
-        {children}
-      </section>
-    </div>
+      <div className="title-row">
+        <h2>{title}</h2>
+        <button type="button" className="secondary" onClick={close}>
+          닫기
+        </button>
+      </div>
+      {children}
+    </dialog>
   );
 }
+
 export function SlotEditor({
   slot,
   options,
@@ -269,6 +289,17 @@ export function SlotEditor({
             {["수업", "공통", "휴일", "없음"].map((k) => (
               <option key={k}>{k}</option>
             ))}
+          </select>
+        </label>
+        <label>
+          강사 배정 상태
+          <select
+            name="assignment_status"
+            defaultValue={slot?.assignment_status || "임시"}
+          >
+            <option>임시</option>
+            <option>변경예정</option>
+            <option>확정</option>
           </select>
         </label>
         <label>

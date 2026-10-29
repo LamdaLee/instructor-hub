@@ -40,7 +40,7 @@ export default function Admin({
   };
   return (
     <>
-      <h1>관리</h1>
+      <h2>과정·변경 기록</h2>
       <div className="toolbar">
         {[
           ["operators", "운영진 계정"],
@@ -154,7 +154,7 @@ export default function Admin({
             <button onClick={() => open("subject")}>과목 추가</button>
           </div>
           <DataTable
-            rows={options.subjects}
+            rows={options.subjects.filter((s: Row) => !s.archived_at)}
             columns={[
               ["name", "과목"],
               ["track", "트랙"],
@@ -162,12 +162,36 @@ export default function Admin({
                 "edit",
                 "관리",
                 (r) => (
-                  <button
-                    className="secondary"
-                    onClick={() => open("subject", r)}
-                  >
-                    트랙 수정
-                  </button>
+                  <div className="inline">
+                    <button
+                      className="secondary"
+                      onClick={() => open("subject", r)}
+                    >
+                      수정
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={async () => {
+                        if (
+                          !confirm(
+                            "과목을 보관할까요? 기존 수업·자료와 변경 기록은 보존됩니다.",
+                          )
+                        )
+                          return;
+                        try {
+                          await post("save", {
+                            kind: "archive_subject",
+                            data: { old_name: r.name },
+                          });
+                          onDone();
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }}
+                    >
+                      보관
+                    </button>
+                  </div>
                 ),
               ],
             ]}
@@ -260,7 +284,15 @@ export default function Admin({
                   d.active = d.active === "on";
                 }
                 if (kind === "operator") d.active = d.active === "on";
-                await post("save", { kind, data: { ...d, id: editing.id } });
+                await post("save", {
+                  kind:
+                    kind === "subject" &&
+                    editing.name &&
+                    d.name !== editing.name
+                      ? "rename_subject"
+                      : kind,
+                  data: { ...d, id: editing.id, old_name: editing.name },
+                });
                 onDone();
                 setEditing(undefined);
               } catch (e) {
@@ -277,7 +309,6 @@ export default function Admin({
                 defaultValue={editing.name ?? ""}
                 required
                 maxLength={200}
-                readOnly={kind === "subject" && !!editing.name}
               />
             </label>
             {kind === "operator" && (
@@ -365,6 +396,26 @@ export default function Admin({
                     type="date"
                     name="ends_on"
                     defaultValue={editing.ends_on ?? ""}
+                  />
+                </label>
+              </>
+            )}
+            {kind === "class" && (
+              <>
+                <label>
+                  담당 매니저
+                  <input
+                    name="manager"
+                    defaultValue={editing.manager || ""}
+                    maxLength={200}
+                  />
+                </label>
+                <label>
+                  강의장
+                  <input
+                    name="room"
+                    defaultValue={editing.room || ""}
+                    maxLength={200}
                   />
                 </label>
               </>

@@ -7,10 +7,11 @@ export default function Login() {
   return (
     <main className="login">
       <div className="brand">
-        강사 허브 <small>운영진 전용</small>
+        LG전자 K-뉴딜 아카데미 <small>관리자</small>
       </div>
-      <h1>로그인</h1>
-      <p>운영진 계정으로 강사와 시간표를 관리합니다.</p>
+      <h1>관리자 로그인</h1>
+      <p>관리자 계정으로 일정과 자료를 관리합니다.</p>
+      <a href="/">공개 화면으로</a>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -18,11 +19,15 @@ export default function Login() {
           setError("");
           const d = new FormData(e.currentTarget);
           try {
-            await post("login", {
+            const result = await post("login", {
               email: d.get("email"),
               password: d.get("password"),
             });
-            location.assign("/");
+            if (result.operator?.role !== "admin") {
+              await post("logout", {});
+              throw new Error("관리자 권한이 필요합니다.");
+            }
+            location.assign("/admin");
           } catch (err) {
             setError((err as Error).message);
           } finally {
