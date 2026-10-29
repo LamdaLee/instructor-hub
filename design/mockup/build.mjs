@@ -26,5 +26,12 @@ const html =
   "</script><script>" +
   main +
   "</script></body></html>";
-await writeFile(resolve(folder, "index.html"), html);
+await writeFile(resolve(folder, "index-original.html"), html);
 console.log("자체 포함 목업 HTML 생성 완료");
+
+const mint = html
+  .replace('data-theme="light"', 'data-theme="light" data-visual="mint"')
+  .replace("</style>", "\n" + (await read("mint-reference.css")) + "</style>");
+await writeFile(resolve(folder, "index-mint.html"), mint);
+await writeFile(resolve(folder, "index.html"), mint);
+console.log("참고 이미지 반영 비교 목업 생성 완료");

@@ -1,0 +1,313 @@
+/* 참고 이미지의 민트·하늘색·흰 카드 표현. 운영 화면의 정보 구조는 유지한다. */
+:root[data-visual="mint"][data-theme="light"] {
+  --paper: #fbfdfd;
+  --surface: #fff;
+  --ink: #193331;
+  --muted: #617b77;
+  --line: #d9eae7;
+  --green: #008477;
+  --green-soft: #e3f7f2;
+  --ux-accent: #008477;
+  --ux-accent-soft: #e3f7f2;
+  --ux-surface-2: #edf9f6;
+  --ux-ink-2: #486963;
+  --ux-ink-3: #607d76;
+  --ux-mint: #008f7e;
+}
+:root[data-visual="mint"][data-theme="light"] body {
+  background:
+    radial-gradient(ellipse 85% 520px at 68% 0, #e4f8ed 0, transparent 80%),
+    var(--paper);
+}
+:root[data-visual="mint"][data-theme="light"] .sidebar {
+  background: #fff;
+  border-right: 1px solid #e2eeec;
+  padding-top: 26px;
+}
+:root[data-visual="mint"][data-theme="light"] .sidebar-foot {
+  border-color: #e0ede9;
+}
+:root[data-visual="mint"][data-theme="light"] .nav-link {
+  color: #55716c;
+}
+:root[data-visual="mint"][data-theme="light"] .nav-link.active {
+  background: linear-gradient(105deg, #d8f5eb, #edf9f7);
+  color: #007a6c;
+  box-shadow: inset 3px 0 #00ad96;
+  border-radius: 12px;
+}
+:root[data-visual="mint"][data-theme="light"] .nav-link:hover {
+  background: #edf9f6;
+}
+:root[data-visual="mint"][data-theme="light"] .topbar {
+  margin: 16px 28px 0;
+  border: 1px solid #cce7e0;
+  border-radius: 999px;
+  height: 65px;
+  background: #ffffffed;
+  box-shadow:
+    0 4px 0 #d8f2eb99,
+    0 8px 25px #168e7c08;
+  padding: 0 25px;
+}
+:root[data-visual="mint"][data-theme="light"] .breadcrumb strong {
+  color: #007f73;
+}
+:root[data-visual="mint"][data-theme="light"] .main {
+  padding-top: 30px;
+}
+:root[data-visual="mint"][data-theme="light"] .eyebrow {
+  color: #607f76;
+}
+:root[data-visual="mint"][data-theme="light"] .page-head h1 {
+  color: #163530;
+  font-weight: 780;
+}
+:root[data-visual="mint"][data-theme="light"] .region-grid {
+  gap: 19px;
+  align-items: start;
+}
+:root[data-visual="mint"][data-theme="light"] .region-column {
+  padding: 17px 14px 1px;
+  border: 1px solid #d9ede6;
+  border-radius: 25px;
+  background: linear-gradient(155deg, #def8ed, #f3fbf7 75%);
+}
+:root[data-visual="mint"][data-theme="light"] .region-column:nth-child(2) {
+  background: linear-gradient(155deg, #dff1ff, #f3faff 75%);
+  border-color: #d4e8f3;
+}
+:root[data-visual="mint"][data-theme="light"] .region-column:nth-child(3) {
+  background: linear-gradient(155deg, #edf6dc, #fafcf4 75%);
+  border-color: #e2ebd1;
+}
+:root[data-visual="mint"][data-theme="light"] .region-name b {
+  font-size: 18px;
+  color: #24463e;
+}
+:root[data-visual="mint"][data-theme="light"] .region-name svg {
+  color: #008b7a;
+}
+:root[data-visual="mint"][data-theme="light"] .region-heading {
+  padding: 0 5px 16px;
+}
+:root[data-visual="mint"][data-theme="light"] .region-heading button {
+  color: #47766c;
+}
+:root[data-visual="mint"][data-theme="light"] .track-card {
+  padding: 20px 18px;
+  border: 1px solid #d9eae4;
+  border-radius: 23px;
+  box-shadow: 0 3px 6px #24775e06;
+  background: #fff;
+  margin-bottom: 14px;
+}
+:root[data-visual="mint"][data-theme="light"] .track-card:hover {
+  border-color: #91cfc0;
+  box-shadow: 0 8px 18px #15886d0c;
+  transform: translateY(-1px);
+}
+:root[data-visual="mint"][data-theme="light"] .track-title {
+  font-size: 20px;
+  letter-spacing: -0.7px;
+  color: #193c34;
+}
+:root[data-visual="mint"][data-theme="light"] .track-token {
+  border-radius: 999px;
+  background: #e3f7f0;
+  color: #287a64;
+}
+:root[data-visual="mint"][data-theme="light"] .track-token.ax {
+  background: #e8f3fe;
+  color: #436f9f;
+}
+:root[data-visual="mint"][data-theme="light"] .track-token.sf {
+  background: #f5f2df;
+  color: #8e7936;
+}
+:root[data-visual="mint"][data-theme="light"] .lesson-box {
+  border-color: #e2eeea;
+  background: #f6fbf9;
+  border-radius: 15px;
+  padding: 14px;
+}
+:root[data-visual="mint"][data-theme="light"] .lesson-title {
+  font-size: 16px;
+  color: #1f3b34;
+}
+:root[data-visual="mint"][data-theme="light"]
+  :is(
+    .track-meta,
+    .track-class,
+    .module-name,
+    .lesson-time,
+    .materials-link,
+    .small-link,
+    .filters label
+  ) {
+  color: #5b776e;
+}
+:root[data-visual="mint"][data-theme="light"] .primary {
+  background: #008c7d;
+  border: 1px solid #008c7d;
+  border-radius: 999px;
+  color: white;
+}
+:root[data-visual="mint"][data-theme="light"] .primary:hover {
+  background: #007c70;
+}
+:root[data-visual="mint"][data-theme="light"] .secondary {
+  border-color: #bcded5;
+  color: #267263;
+  border-radius: 999px;
+  background: white;
+}
+:root[data-visual="mint"][data-theme="light"] .icon-button {
+  border-color: #d2e8e0;
+  border-radius: 999px;
+  color: #447469;
+}
+:root[data-visual="mint"][data-theme="light"] .date-pill {
+  border-color: #cce5df;
+  border-radius: 999px;
+}
+:root[data-visual="mint"][data-theme="light"] .filter-state {
+  background: #e7f6f0;
+  color: #497568;
+  border-radius: 12px;
+}
+:root[data-visual="mint"][data-theme="light"] .filter-state button {
+  color: #247968;
+}
+:root[data-visual="mint"][data-theme="light"] .panel {
+  border-radius: 23px;
+  border-color: #d9eae4;
+  box-shadow: 0 4px 15px #1f7b5e04;
+}
+:root[data-visual="mint"][data-theme="light"] .material-card {
+  border-radius: 24px;
+  background: linear-gradient(155deg, #e6f9f2, #fff 65%);
+  border-color: #d7ece5;
+}
+:root[data-visual="mint"][data-theme="light"] .material-card:nth-child(2n) {
+  background: linear-gradient(155deg, #e7f3ff, #fff 65%);
+  border-color: #d6e8f3;
+}
+:root[data-visual="mint"][data-theme="light"] .notice-yellow {
+  --notice-bg: #fff2ba;
+  --notice-edge: #dfca7b;
+}
+:root[data-visual="mint"][data-theme="light"] .notice-blue {
+  --notice-bg: #e2f2ff;
+  --notice-edge: #a8cee1;
+}
+:root[data-visual="mint"][data-theme="light"] .notice-rose {
+  --notice-bg: #fae7ed;
+  --notice-edge: #dbb8c4;
+}
+:root[data-visual="mint"][data-theme="light"] .schedule-table th.region-group {
+  background: #cce9e0;
+  color: #224e41;
+}
+:root[data-visual="mint"][data-theme="light"] .schedule-table .track-th {
+  background: #eff9f5;
+}
+:root[data-visual="mint"][data-theme="light"] .schedule-table tbody th {
+  background: #e1f2eb;
+}
+:root[data-visual="mint"][data-theme="light"] .schedule-table th,
+:root[data-visual="mint"][data-theme="light"] .schedule-table td {
+  border-color: #a7beb2;
+}
+:root[data-visual="mint"][data-theme="light"]
+  .schedule-table
+  td[data-org="lge"] {
+  background: #f6dee8;
+}
+:root[data-visual="mint"][data-theme="light"]
+  .schedule-table
+  td[data-org="clips"] {
+  background: #dfeafb;
+}
+:root[data-visual="mint"][data-theme="light"]
+  .schedule-table
+  td[data-org="lab"] {
+  background: #d8eee6;
+}
+:root[data-visual="mint"][data-theme="light"]
+  .schedule-table
+  td[data-org="assist"] {
+  background: #e9dff5;
+}
+:root[data-visual="mint"][data-theme="light"]
+  .schedule-table
+  td[data-org="free"] {
+  background: #e8eedb;
+}
+:root[data-visual="mint"][data-theme="light"] .tabs {
+  background: #e6f2ec;
+}
+:root[data-visual="mint"][data-theme="light"] .tabs button.active {
+  color: #087968;
+}
+:root[data-visual="mint"][data-theme="light"] .bottom-nav {
+  border-color: #d6e8e0;
+  background: #fffffff5;
+}
+:root[data-visual="mint"][data-theme="light"] .bottom-nav button.active {
+  color: #008674;
+}
+@media (max-width: 1200px) {
+  :root[data-visual="mint"][data-theme="light"] .track-title {
+    font-size: 18px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .track-card {
+    padding: 18px 15px;
+  }
+}
+@media (max-width: 900px) {
+  :root[data-visual="mint"][data-theme="light"] .topbar {
+    margin: 10px 12px 0;
+    padding: 0 12px;
+    height: 66px;
+    border-radius: 18px;
+    gap: 9px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .main {
+    padding-top: 25px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .region-column {
+    padding: 18px 12px 0;
+    border-radius: 23px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .track-card {
+    padding: 20px 18px;
+    border-radius: 21px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .track-title {
+    font-size: 21px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .topbar .brand-mark {
+    width: 29px;
+    height: 29px;
+    flex-shrink: 0;
+  }
+  :root[data-visual="mint"][data-theme="light"] .topbar .brand strong {
+    font-size: 13px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .topbar .brand span {
+    font-size: 11px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .top-actions {
+    gap: 6px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .mock-label {
+    padding: 4px 5px;
+    font-size: 9px;
+  }
+  :root[data-visual="mint"][data-theme="light"] .topbar .icon-button {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+}

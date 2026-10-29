@@ -20,3 +20,7 @@ node design/mockup/verify.mjs
 ```
 
 밝은/어두운 테마, 375px 모바일, 키보드, 모션 줄이기와 주요 공개/관리자 흐름을 Chromium으로 검증했습니다. 원본 Lucian 요소는 `lucian/` 폴더에 MIT 출처와 함께 보존했습니다.
+
+## 선택된 기본 스타일
+
+사용자가 선택한 민트·하늘색과 둥근 흰 카드 스타일을 `index.html` 기본 목업에 적용했습니다. `index-mint.html`도 같은 내용입니다. 이전 화면은 `index-original.html`에 보존합니다. 이전안 검증은 `node design/mockup/verify.mjs --original`로 실행할 수 있습니다.

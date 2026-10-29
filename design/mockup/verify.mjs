@@ -2,7 +2,7 @@ import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 const folder = dirname(fileURLToPath(import.meta.url));
 const browser = await chromium.launch({
@@ -17,7 +17,13 @@ const page = await browser.newPage({
 });
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
-const content = await readFile(resolve(folder, "index.html"));
+const mint = process.argv.includes("--mint");
+const original = process.argv.includes("--original");
+const content = await readFile(
+  resolve(folder, original ? "index-original.html" : mint ? "index-mint.html" : "index.html"),
+);
+const captureFolder = original ? resolve(folder, "screenshots/original") : mint ? resolve(folder, "screenshots/mint") : resolve(folder, "screenshots");
+await mkdir(captureFolder, { recursive: true });
 const server = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(content);
@@ -30,7 +36,7 @@ async function open() {
 }
 async function screenshot(name, fullPage = true) {
   await page.screenshot({
-    path: resolve(folder, "screenshots", name),
+    path: resolve(captureFolder, name),
     fullPage,
   });
 }
@@ -142,11 +148,9 @@ try {
   await noticeDialog
     .getByRole("button", { name: "공지 저장", exact: true })
     .click();
-  let noticeCard = page
-    .locator(".notice-card")
-    .filter({
-      has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
-    });
+  let noticeCard = page.locator(".notice-card").filter({
+    has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+  });
   assert.ok((await noticeCard.innerText()).includes("대구"));
   assert.ok((await noticeCard.innerText()).includes("중요"));
   await noticeCard.getByRole("button", { name: "수정", exact: true }).click();
@@ -158,11 +162,9 @@ try {
     .getByRole("dialog")
     .getByRole("button", { name: "공지 저장", exact: true })
     .click();
-  noticeCard = page
-    .locator(".notice-card")
-    .filter({
-      has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
-    });
+  noticeCard = page.locator(".notice-card").filter({
+    has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+  });
   assert.ok((await noticeCard.innerText()).includes("변경된 준비사항"));
   await noticeCard.getByRole("button", { name: "삭제", exact: true }).click();
   await page.getByRole("button", { name: "삭제 처리", exact: true }).click();
