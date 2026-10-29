@@ -144,8 +144,10 @@ export function SlotEditor({
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const editing = !!slot?.id;
+  const additional = !!slot?.additional_instructor;
   return (
-    <Modal title={slot ? "시간표 수정" : "시간표 추가"} close={close}>
+    <Modal title={additional ? "담당 강사 추가" : editing ? "시간표 수정" : "시간표 추가"} close={close}>
       <form
         className="form-grid"
         onSubmit={async (e) => {
@@ -164,6 +166,11 @@ export function SlotEditor({
             return;
           }
           const selected = unchanged ? { id: slot.instructor_id, name: slot.linked_name || slot.instructor_name } : matches[0];
+          if (additional && !selected) {
+            setError("추가할 강사를 목록에서 선택하세요. 강사가 없으면 강사 정보에서 먼저 등록하세요.");
+            setBusy(false);
+            return;
+          }
           const row = {
             ...d,
             instructor_id: selected?.id || "",
@@ -172,6 +179,7 @@ export function SlotEditor({
             day: slot?.day ?? d.day,
             instructor_name: selected?.name || name,
             period: slot?.period ?? "",
+            ...(additional ? { organization: selected?.organization || d.organization } : {}),
           };
           if (!!d.start_time !== !!d.end_time || (d.start_time && String(d.end_time) <= String(d.start_time))) {
             setError("시작·종료 시간을 함께 입력하고 종료 시간을 더 늦게 지정하세요.");
@@ -181,7 +189,7 @@ export function SlotEditor({
           try {
             const r = await post("save", {
               kind: "slots",
-              data: { rows: [row], overwrite: !!slot },
+              data: { rows: [row], overwrite: editing },
             });
             if (r.conflicts)
               alert(
@@ -196,13 +204,14 @@ export function SlotEditor({
           }
         }}
       >
+        {additional && <p className="muted wide">같은 날짜·반·과목에 담당 강사를 추가합니다. 기존 강사는 유지됩니다. 각 강사의 담당 시간을 입력하고 기존 강사의 시간도 나누어 설정하세요.</p>}
         <label>
           반
           <select
             name="class_id"
             defaultValue={slot?.class_id ?? ""}
             required
-            disabled={!!slot}
+            disabled={editing || additional}
           >
             <option value="">반 선택</option>
             {options.classes.map((c: Row) => (
@@ -219,16 +228,16 @@ export function SlotEditor({
 
             defaultValue={slot?.day ?? ""}
             required
-            disabled={!!slot}
+            disabled={editing || additional}
           />
         </label>
         <label>
-          시작 시간 (선택)
-          <input name="start_time" type="time" defaultValue={slot?.start_time?.slice(0, 5) || ""} />
+          {additional ? "담당 시작 시간" : "시작 시간 (선택)"}
+          <input name="start_time" type="time" required={additional} defaultValue={slot?.start_time?.slice(0, 5) || ""} />
         </label>
         <label>
-          종료 시간 (선택)
-          <input name="end_time" type="time" defaultValue={slot?.end_time?.slice(0, 5) || ""} />
+          {additional ? "담당 종료 시간" : "종료 시간 (선택)"}
+          <input name="end_time" type="time" required={additional} defaultValue={slot?.end_time?.slice(0, 5) || ""} />
         </label>
         <p className="muted wide">시간을 모두 비우면 평택 외 수업은 09:00~18:00으로 표시합니다. 평택은 실제 시간을 별도로 입력하세요.</p>
         <label>

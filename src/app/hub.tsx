@@ -281,7 +281,7 @@ export default function Hub({
     </article>
   );
   const lessons = (c: Row, d: string) =>
-    rows.filter((r) => r.class_id === c.id && r.day === d);
+    rows.filter((r) => r.class_id === c.id && r.day === d).sort((a, b) => String(a.effective_start_time || "").localeCompare(String(b.effective_start_time || "")));
   const lessonCard = (r: Row) => (
     <div className="lesson-content" key={r.id}>
       <small>
@@ -306,12 +306,17 @@ export default function Hub({
           >
             수정
           </button>
+          {r.kind === "수업" && <button type="button" className="session-action" onClick={() => setEditor({ kind: "slot", row: {
+            ...r, id: undefined, period: crypto.randomUUID(), additional_instructor: true,
+            instructor_id: "", instructor_name: "", linked_name: "", organization: "",
+            start_time: "", end_time: "", assignment_status: "임시",
+          } })}>강사 추가</button>}
           <button
             className="session-action session-action-delete"
             aria-label="수업 삭제"
             title="수업 삭제"
             onClick={async () => {
-              if (!confirm("이 날짜의 수업을 시간표에서 삭제할까요? 휴일로 남기려면 취소 후 수정에서 구분을 휴일로 바꾸세요. 삭제 기록은 보존됩니다."))
+              if (!confirm("이 카드의 강사 배정과 시간대를 삭제할까요? 같은 날 다른 강사의 배정은 유지됩니다. 휴일로 남기려면 수정에서 구분을 휴일로 바꾸세요. 삭제 기록은 보존됩니다."))
                 return;
               try {
                 await post("save", { kind: "delete_slot", data: { id: r.id } });

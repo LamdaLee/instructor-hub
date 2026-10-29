@@ -186,3 +186,45 @@ test("포털에서 관리자 강사 정보 보완과 기관 계정 직접 수정
   const response = await page.request.post("/api/save", { headers: { Origin: "http://localhost:3000" }, data: { kind: "instructor", data: { id: person, name: "가상 변경 차단", organization: "LGE", subjects: [] } } });
   expect(response.status()).toBe(403);
 });
+
+test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", async ({ page, context }) => {
+  const second = randomUUID();
+  const cid = classes.find(c => c.region === "대전")!.id;
+  const subject = `가상 분담 프로젝트 ${second}`;
+  try {
+    await db.query("insert into hub.subjects(name) values($1)", [subject]);
+    await db.query("insert into hub.instructors(id,name,organization) values($1,'가상 분담 강사','LGE')", [second]);
+    await db.query("update hub.slots set instructor_id=$1,instructor_name='가상 운영 강사',subject=$3,start_time='09:00',end_time='13:00' where class_id=$2", [person, cid, subject]);
+    await login(context, "admin");
+    await page.goto("/admin?view=region&region=대전&cohort=976");
+    const desktop = page.locator(".schedule-shell");
+    await desktop.getByRole("button", { name: "강사 추가", exact: true }).click();
+    const form = page.getByRole("dialog", { name: "담당 강사 추가", exact: true });
+    await expect(form.getByRole("combobox", { name: "반", exact: true })).toBeDisabled();
+    await form.getByLabel("강사 이름", { exact: true }).fill("가상 분담 강사 · LGE");
+    await form.getByLabel("담당 시작 시간", { exact: true }).fill("14:00");
+    await form.getByLabel("담당 종료 시간", { exact: true }).fill("18:00");
+    await form.getByRole("button", { name: "저장", exact: true }).click();
+    await expect(form).not.toBeVisible();
+    await expect(desktop.locator(".lesson-content")).toHaveCount(2);
+    await expect(desktop).toContainText("09:00~13:00");
+    await expect(desktop).toContainText("14:00~18:00");
+    const persisted = await db.query("select count(*)::int as total,count(distinct instructor_id)::int as teachers from hub.slots where class_id=$1", [cid]);
+    expect(persisted.rows[0]).toEqual({ total: 2, teachers: 2 });
+    await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업·메모 수정", exact: true }).click();
+    const edit = page.getByRole("dialog", { name: "시간표 수정", exact: true });
+    await edit.getByLabel("종료 시간 (선택)", { exact: true }).fill("17:00");
+    await edit.getByRole("button", { name: "저장", exact: true }).click();
+    await expect(edit).not.toBeVisible();
+    await expect(desktop).toContainText("14:00~17:00");
+    page.once("dialog", dialog => dialog.accept());
+    await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업 삭제", exact: true }).click();
+    await expect(desktop.locator(".lesson-content")).toHaveCount(1);
+    await expect(desktop).toContainText("09:00~13:00");
+  } finally {
+    await db.query("delete from hub.slots where instructor_id=$1", [second]);
+    await db.query("delete from hub.instructors where id=$1", [second]);
+    await db.query("update hub.slots set subject=null where class_id=$1", [cid]);
+    await db.query("delete from hub.subjects where name=$1", [subject]);
+  }
+});
