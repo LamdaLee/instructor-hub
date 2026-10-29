@@ -30,8 +30,11 @@ export async function callApi(
   const invocation = `hub.${name}(${args.map((_, i) => `$${i + 1}`).join(",")})`;
   // DB의 과거 함수 정의에 의존하지 않고 같은 왕복 안에서 먼저 세션을 확인한다.
   const protectedCall = ["api_read", "api_save", "api_material", "api_org", "api_password"].includes(name);
+  const adminCheck = name === "api_save"
+    ? `when coalesce(auth.me->'operator'->>'role','')<>'admin' then '{"ok":false,"code":"forbidden"}'::jsonb`
+    : "";
   const query = protectedCall
-    ? `select case when coalesce((hub.api_me($1)->>'ok')::boolean,false) then ${invocation} else '{"ok":false,"code":"session_expired"}'::jsonb end result`
+    ? `with auth as materialized (select hub.api_me($1) me) select case when not coalesce((auth.me->>'ok')::boolean,false) then '{"ok":false,"code":"session_expired"}'::jsonb ${adminCheck} else ${invocation} end result from auth`
     : `select ${invocation} result`;
   const { rows } = await pool.query<{ result: Result }>(query, args);
   return rows[0].result;

@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { useEffect, useState } from "react";
 import { type Row, api, post } from "@/lib/client";
 import { DataTable, Modal } from "./components";
@@ -340,12 +341,12 @@ export default function Admin({
                   >
                     <option value="">없음</option>
                     {["aSSIST", "CLIPS", "LGE", "LAB4DX"].map((o) => (
-                      <option key={o}>{o}</option>
+                      <option key={o} value={o}>{orgLabel(o)}</option>
                     ))}
                   </select>
                   <small>
-                    LG전자·LAB4DX는 전체 기관 강사 변경 신청을 승인·반려하고,
-                    LAB4DX는 가입 신청을 승인합니다.
+                    LGE·Lab4dx는 전체 기관 강사 변경 신청을 승인·반려하고,
+                    Lab4dx는 가입 신청을 승인합니다.
                   </small>
                 </label>
                 <label>

@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { usePendingCounts } from "./pending-counts";
 import AccountMenu from "./account-menu";
 import { useEffect, useState } from "react";
@@ -136,7 +137,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
         <div className="portal-page-title">
           <h1>{tabs.find(([v]) => v === tab)?.[1]}</h1>
           <small>
-            {operator.name} · {operator.organization ?? "소속 미지정"}
+            {operator.name} · {orgLabel(operator.organization)}
             {operator.all_orgs
               ? " · 전체 기관 열람"
               : " · 자기 기관만 열람"}
@@ -198,7 +199,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
               <p>
                 {operator.review_requests
                   ? "승인하면 강사 명단에 바로 반영됩니다. 삭제는 기록을 지우지 않고 보관 처리합니다."
-                  : "LG전자·LAB4DX 담당자가 승인 또는 반려합니다."}
+                  : "LGE·Lab4dx 담당자가 승인 또는 반려합니다."}
               </p>
               <button
                 className="secondary"
@@ -300,12 +301,12 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
                       defaultValue={operator.organization ?? ""}
                     >
                       {ORGS.map((o) => (
-                        <option key={o}>{o}</option>
+                        <option key={o} value={o}>{orgLabel(o)}</option>
                       ))}
                     </select>
                   </label>
                 ) : (
-                  <p>기관: {operator.organization}</p>
+                  <p>기관: {orgLabel(operator.organization)}</p>
                 )}
                 <label>
                   연락처
@@ -326,7 +327,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
             )}
             {form.kind === "decide_signup" && form.decision === "approve" && <>
               <label className="wide">승인할 소속 기관
-                <select aria-label="승인할 소속 기관" value={approvalOrg} onChange={e => setApprovalOrg(e.target.value)}>{ORGS.map(o => <option key={o}>{o}</option>)}</select>
+                <select aria-label="승인할 소속 기관" value={approvalOrg} onChange={e => setApprovalOrg(e.target.value)}>{ORGS.map(o => <option key={o} value={o}>{orgLabel(o)}</option>)}</select>
               </label>
               {["LGE", "LAB4DX"].includes(approvalOrg) && <div className="privilege-warning wide">
                 <p>{approvalOrg === "LAB4DX" ? "전체 기관 열람·강사 변경 승인·가입 승인 권한이 부여됩니다." : "전체 기관 열람·강사 변경 승인 권한이 부여됩니다."}</p>

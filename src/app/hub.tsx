@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { REGIONS, regionRank } from "@/lib/regions";
 import { usePendingCounts } from "./pending-counts";
 import { Dashboard } from "./overview";
@@ -40,7 +41,7 @@ export function Org({ name }: { name?: string }) {
                 : "other")
       }
     >
-      {name === "LGE" ? "LG전자" : name || "소속 미등록"}
+      {orgLabel(name)}
     </span>
   );
 }
@@ -101,9 +102,18 @@ export default function Hub({
     ]),
   );
   if (filter.cohort === "all") filter.cohort = "";
+  const clearFilters = (keys: string[]) => { for (const key of keys) filter[key] = ""; };
+  if (view === "dashboard") clearFilters(["region", "cohort", "track", "organization", "class_id", "q"]);
+  if (view === "slots") clearFilters(["region", "track", "organization", "class_id", "q"]);
+  if (view === "region") {
+    clearFilters(["cohort", "track", "organization", "class_id", "q"]);
+    filter.region = REGIONS.includes(filter.region) ? filter.region : REGIONS[0];
+  }
+  if (view === "instructors") clearFilters(["region", "cohort", "track", "class_id"]);
+
   if (
     !params.has("cohort") &&
-    ["slots", "region"].includes(view) &&
+    view === "slots" &&
     options
   ) {
     const activeClasses = (options.classes as Row[]).filter((c) => c.active);
@@ -283,7 +293,7 @@ export default function Hub({
         <span className="assignment">{r.assignment_status}</span>
       </div>
       {r.conflict && <p className="warning">같은 날짜에 다른 반에도 배정된 강사입니다.</p>}
-      {r.note && <div className="cell-note">{r.note}</div>}
+      {r.note && <div className="cell-note"><strong>메모</strong><div>{r.note}</div></div>}
       {isAdmin && (
         <div className="session-actions">
           <button
@@ -299,7 +309,7 @@ export default function Hub({
             aria-label="수업 삭제"
             title="수업 삭제"
             onClick={async () => {
-              if (!confirm("수업을 삭제할까요? 변경 기록은 보존됩니다."))
+              if (!confirm("이 날짜의 수업을 시간표에서 삭제할까요? 휴일로 남기려면 취소 후 수정에서 구분을 휴일로 바꾸세요. 삭제 기록은 보존됩니다."))
                 return;
               try {
                 await post("save", { kind: "delete_slot", data: { id: r.id } });
@@ -375,7 +385,7 @@ export default function Hub({
               })
             }
           >
-            반 시간표 →
+            지역 시간표 →
           </button>
         </div>
       </div>
@@ -470,7 +480,7 @@ export default function Hub({
             {isAdmin && <small>관리자 · {operator?.name}</small>}
           </div>
         )}
-        {!["materials", "announcements", "manage", "facilities"].includes(
+        {!["dashboard", "slots", "region", "instructors", "materials", "announcements", "manage", "facilities"].includes(
           view,
         ) && (
           <section className="filters portal-filters" aria-label="조회 필터">
@@ -508,7 +518,7 @@ export default function Hub({
                     <option value={key === "cohort" ? "all" : ""}>전체</option>
                     {(values as string[]).map((v) => (
                       <option key={v} value={v}>
-                        {String(key) === "cohort" ? v + "기" : v}
+                        {String(key) === "cohort" ? v + "기" : String(key) === "organization" ? orgLabel(v) : v}
                       </option>
                     ))}
                   </select>
@@ -531,6 +541,12 @@ export default function Hub({
             </button>
           </section>
         )}
+        {view === "slots" && options && <section className="schedule-choices" aria-label="전체 시간표 기수 선택">
+          <label>기수<select value={filter.cohort || "all"} onChange={e => update({ cohort: e.target.value })}>
+            <option value="all">전체 기수</option>{([...new Set(options.classes.map((c: Row) => Number(c.cohort)))] as number[]).sort((a,b) => a-b).map(c => <option key={c} value={c}>{c}기</option>)}
+          </select></label>
+        </section>}
+        {view === "instructors" && options && <section className="schedule-choices" aria-label="강사 기관 선택"><label>기관<select value={filter.organization} onChange={e => update({ organization: e.target.value })}><option value="">전체 기관</option>{options.organizations.map((o: string) => <option key={o} value={o}>{orgLabel(o)}</option>)}</select></label></section>}
         {error && (
           <p className="error" role="alert">
             {error} <button onClick={refresh}>다시 시도</button>
@@ -735,7 +751,7 @@ export default function Hub({
             {isAdmin && (
               <div className="toolbar">
                 <button onClick={() => setEditor({ kind: "slot" })}>
-                  수업 추가
+                  시간표 추가
                 </button>
                 <button
                   className="secondary"
@@ -745,6 +761,7 @@ export default function Hub({
                 </button>
               </div>
             )}
+            {isAdmin && <p className="schedule-help">휴일은 해당 수업의 수정에서 구분을 ‘휴일’로 바꾸고 메모를 남기세요. 일정을 없애려면 삭제를 선택하세요. 다음 과정은 <button type="button" className="link-button" onClick={() => navigate("manage")}>과정·변경 기록</button>에서 반을 추가한 뒤 시간표를 등록하세요.</p>}
             <div className="schedule-shell">
               <table className="schedule-table">
                 <caption className="sr-only">
@@ -753,7 +770,7 @@ export default function Hub({
                 <thead>
                   <tr>
                     <th>지역</th>
-                    <th>트랙 · 반</th>
+                    {view !== "region" && <th>트랙 · 반</th>}
                     {displayDates.map((d) => (
                       <th key={d} className={d === today() ? "is-today" : undefined} aria-current={d === today() ? "date" : undefined}>
                         {d.slice(5).replace("-", ".")}
@@ -763,7 +780,7 @@ export default function Hub({
                   </tr>
                 </thead>
                 <tbody>
-                  {classes.map((c, i) => (
+                  {view === "region" ? <tr><th className="region-row" scope="row">{filter.region}</th>{displayDates.map(d => <td key={d} className={d === today() ? "is-today" : undefined}>{rows.filter(r => r.day === d).map(r => <div key={r.id}><small className="muted">{r.class_name}</small>{lessonCard(r)}</div>)}</td>)}</tr> : classes.map((c, i) => (
                     <tr
                       className={
                         i === 0 || classes[i - 1].region !== c.region
@@ -804,7 +821,7 @@ export default function Hub({
               </table>
             </div>
             <div className="schedule-mobile">
-              <div className="toolbar">
+              {view !== "region" && <div className="toolbar">
                 <button
                   className={mobile === "track" ? "" : "secondary"}
                   onClick={() => setMobile("track")}
@@ -817,19 +834,19 @@ export default function Hub({
                 >
                   날짜별 보기
                 </button>
-              </div>
-              {(mobile === "track" ? classes : displayDates).map(
+              </div>}
+              {((view !== "region" && mobile === "track") ? classes : displayDates).map(
                 (item: any, i) => (
                   <details
-                    key={mobile === "track" ? item.id : item}
+                    key={view !== "region" && mobile === "track" ? item.id : item}
                     open={i === 0}
                   >
-                    <summary className={mobile === "date" && item === today() ? "is-today" : undefined}>
-                      {mobile === "track"
+                    <summary className={(view === "region" || mobile === "date") && item === today() ? "is-today" : undefined}>
+                      {view !== "region" && mobile === "track"
                         ? `${item.region} · ${trackName(item.track)} · ${item.cohort}기`
                         : item + " " + weekday(item) + "요일" + (item === today() ? " · 오늘" : "")}
                     </summary>
-                    {(mobile === "track"
+                    {(view !== "region" && mobile === "track"
                       ? displayDates.flatMap((d) => lessons(item, d))
                       : classes.flatMap((c) => lessons(c, item))
                     ).map((r) => (
@@ -890,7 +907,6 @@ export default function Hub({
               ["name", "이름", p => teacherButton(p)],
               ["organization", "기관", p => <Org name={p.organization} />],
               ["subjects", "과목", p => [...new Set([...(p.subjects || []), ...(p.taught_subjects || [])])].join(", ")],
-              ["classes", "담당 반", p => (p.classes || []).join(", ") || "—"],
               ["total_days", "총 수업일수", p => `${p.total_days || 0}일`],
               ["last_day", "최근 수업일"],
               ["next_day", "다음 수업일"],

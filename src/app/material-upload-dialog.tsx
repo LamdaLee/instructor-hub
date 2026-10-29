@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { useState } from "react";
 import { messages, readResponse, type Row } from "@/lib/client";
 import { Modal } from "./components";
@@ -67,7 +68,7 @@ export default function MaterialUploadDialog({ editing, options, admin, allowedO
         </> : <>
           <p className="muted wide">기존 교재는 수업 미연결 상태로 보존했습니다. 위 버튼으로 실제 수업에 연결할 수 있습니다.</p>
           <label>교과목<select name="subject" defaultValue={editing?.subject} required><option value="">과목 선택</option>{options.subjects.map((s: Row) => <option key={s.name}>{s.name}</option>)}</select></label>
-          <label>강사<select key={org} name="instructor_id" defaultValue={options.instructors.some((p: Row) => p.id === editing?.instructor_id && p.organization === org) ? editing?.instructor_id : ""} required><option value="">강사 선택</option>{options.instructors.filter((p: Row) => p.organization === org).map((p: Row) => <option key={p.id} value={p.id}>{p.name} · {p.organization}</option>)}</select></label>
+          <label>강사<select key={org} name="instructor_id" defaultValue={options.instructors.some((p: Row) => p.id === editing?.instructor_id && p.organization === org) ? editing?.instructor_id : ""} required><option value="">강사 선택</option>{options.instructors.filter((p: Row) => p.organization === org).map((p: Row) => <option key={p.id} value={p.id}>{p.name} · {orgLabel(p.organization)}</option>)}</select></label>
         </>}
         <label>{editing ? "작업자 이름" : "등록자 이름"}<input name={editing ? "actor" : "uploader"} required maxLength={80} /></label>
         {admin && <label>공개 여부<select name="published" defaultValue={editing?.published === false ? "false" : "true"}><option value="true">기관 권한에 따라 공개</option><option value="false">관리자만 보기</option></select></label>}

@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { useState, useEffect, useRef } from "react";
 import { type Row, post, api, classLabel } from "@/lib/client";
 import { parseTsv } from "@/lib/input.mjs";
@@ -153,7 +154,7 @@ export function SlotEditor({
           const d = Object.fromEntries(new FormData(e.currentTarget));
           const name = String(d.instructor_name || "").trim();
           const matches = (options.instructors as Row[]).filter(
-            (i) => i.name === name || `${i.name} · ${i.organization || "기관 없음"}` === name,
+            (i) => i.name === name || `${i.name} · ${orgLabel(i.organization)}` === name,
           );
           const unchanged = !!slot?.instructor_id && name === (slot.linked_name || slot.instructor_name);
           if (!unchanged && matches.length > 1) {
@@ -244,7 +245,7 @@ export function SlotEditor({
             defaultValue={slot?.linked_name || slot?.instructor_name || ""}
             maxLength={200} placeholder="강사 이름 입력 또는 선택" />
           <datalist id="slot-instructor-options">
-            {options.instructors.map((i: Row) => <option key={i.id} value={`${i.name} · ${i.organization || "기관 없음"}`} />)}
+            {options.instructors.map((i: Row) => <option key={i.id} value={`${i.name} · ${orgLabel(i.organization)}`} />)}
           </datalist>
         </label>
         <label>
@@ -252,10 +253,11 @@ export function SlotEditor({
           <select name="organization" defaultValue={slot?.organization ?? ""}>
             <option value="">없음</option>
             {options.organizations.map((o: string) => (
-              <option key={o}>{o}</option>
+              <option key={o} value={o}>{orgLabel(o)}</option>
             ))}
           </select>
         </label>
+        <p className="muted wide">공휴일·휴강일은 구분을 휴일로 선택하고 메모에 사유를 남기세요. 새 과정은 과정·변경 기록에서 반을 먼저 추가하세요.</p>
         <label>
           구분
           <select name="kind" defaultValue={slot?.kind ?? "수업"}>
@@ -375,7 +377,7 @@ export function InstructorEditor({
           >
             <option value="">없음</option>
             {options.organizations.map((o: string) => (
-              <option key={o}>{o}</option>
+              <option key={o} value={o}>{orgLabel(o)}</option>
             ))}
           </select>
         </label>

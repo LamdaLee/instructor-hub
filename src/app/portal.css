@@ -1236,3 +1236,36 @@ header.portal-header { flex-wrap: wrap; }
   .material-table td > * { min-width: 0; }
   .material-table td small { grid-column: 2; }
 }
+
+/* 주요 메뉴는 읽기와 클릭이 쉬운 크기로 통일한다. */
+.portal-header nav { gap: 6px; }
+.portal-header nav button { font-size: 18px; font-weight: 650; min-height: 56px; padding: 15px 24px; line-height: 1.4; }
+.admin-access { font-size: 14px; min-height: 44px; display: inline-flex; align-items: center; }
+.admin-nav button { font-size: 15px; min-height: 46px; padding: 12px 18px; }
+.account-menu summary { font-size: 15px; min-height: 44px; }
+.schedule-choices { display: flex; gap: 16px; margin: 18px 0 24px; }
+.schedule-choices label { font-size: 15px; }
+.schedule-choices select { min-height: 56px; font-size: 19px; min-width: 240px; border-radius: 14px; padding: 12px 18px; border-color: #b8d9cc; }
+.region-switch { display: flex; justify-content: center; gap: 14px; margin: 20px 0 28px; }
+.region-switch button { font-size: 19px; font-weight: 650; min-height: 58px; min-width: 140px; padding: 14px 28px; }
+@media (max-width: 700px) {
+  .region-switch { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .region-switch button { min-width: 0; font-size: 17px; padding: 14px 10px; }
+  .schedule-choices, .schedule-choices label, .schedule-choices select { width: 100%; min-width: 0; }
+  .mobile-nav button { flex: 1; min-width: 0; white-space: normal; font-size: 12px; min-height: 50px; padding: 8px 5px; line-height: 1.4; }
+  .account-menu summary { font-size: 13px; }
+}
+
+@media (min-width: 701px) {
+  .material-org-tabs button { font-size: 16px; min-height: 48px; padding: 12px 20px; }
+  .portal-header nav button:focus-visible, .admin-nav button:focus-visible { outline: 3px solid #168577; outline-offset: 3px; }
+}
+
+.copy-contact { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; overflow-wrap: anywhere; }
+.copy-contact > span { min-width: 0; overflow-wrap: anywhere; }
+.copy-contact button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+.copy-contact small { flex-basis: 100%; color: var(--muted); }
+.copy-contact small:empty { display: none; }
+.cell-note { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.cell-note strong { display: block; margin-bottom: 3px; }
+.schedule-help { font-size: 14px; line-height: 1.7; color: var(--muted); }

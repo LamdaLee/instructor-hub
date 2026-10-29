@@ -1,4 +1,5 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
 import { useState } from "react";
 import { post } from "@/lib/client";
 export default function Signup() {
@@ -12,7 +13,7 @@ export default function Signup() {
       </div>
       <h1>기관 계정 가입 신청</h1>
       <p>
-        이메일·이름·소속 기관과 비밀번호를 입력해 가입을 요청하세요. LAB4DX
+        이메일·이름·소속 기관과 비밀번호를 입력해 가입을 요청하세요. Lab4dx
         담당자가 승인하면 이 이메일과 비밀번호로 로그인합니다.
       </p>
       <p>
@@ -20,7 +21,7 @@ export default function Signup() {
       </p>
       {done ? (
         <p role="status">
-          가입 요청을 접수했습니다. LAB4DX 담당자가 승인하면 입력한 이메일과
+          가입 요청을 접수했습니다. Lab4dx 담당자가 승인하면 입력한 이메일과
           비밀번호로 로그인할 수 있습니다. 이미 계정이 있다면 기존 비밀번호로
           로그인하세요.
         </p>
@@ -72,8 +73,8 @@ export default function Signup() {
               </option>
               <option value="aSSIST">aSSIST</option>
               <option value="CLIPS">CLIPS</option>
-              <option value="LGE">LG전자</option>
-              <option value="LAB4DX">LAB4DX</option>
+              <option value="LGE">LGE</option>
+              <option value="LAB4DX">Lab4dx</option>
             </select>
           </label>
           <label>

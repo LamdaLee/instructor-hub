@@ -1,4 +1,6 @@
 "use client";
+import { orgLabel } from "@/lib/organizations";
+import CopyContact from "./copy-contact";
 import MaterialUploadDialog from "./material-upload-dialog";
 import { readResponse } from "@/lib/client";
 import { useEffect, useState } from "react";
@@ -36,11 +38,11 @@ export function TeacherModal({ id, close }: { id: string; close: () => void }) {
           <Org name={p.organization} />
           <dl>
             <dt>소속</dt>
-            <dd>{p.organization || "미등록"}</dd>
+            <dd>{orgLabel(p.organization)}</dd>
             <dt>메일주소</dt>
-            <dd>{p.email || "미등록"}</dd>
+            <dd><CopyContact value={p.email} label="이메일 주소" /></dd>
             <dt>전화번호</dt>
-            <dd>{p.phone || "미등록"}</dd>
+            <dd><CopyContact value={p.phone} label="전화번호" /></dd>
             <dt>담당 과목</dt>
             <dd>
               {[
@@ -148,7 +150,7 @@ export function AnnouncementEditor({
   );
 }
 const MATERIAL_ORGS = [
-  ["CLIPS", "클립스"], ["aSSIST", "어시스트"], ["LGE", "LG전자"], ["LAB4DX", "랩포디엑스"],
+  ["CLIPS", "CLIPS"], ["aSSIST", "aSSIST"], ["LGE", "LGE"], ["LAB4DX", "Lab4dx"],
 ];
 export function Materials({
   options,
@@ -412,7 +414,7 @@ export function InstructorPaste({
           <ul>
             {rows.map((r, i) => (
               <li key={i}>
-                {r.name} · {r.organization}
+                {r.name} · {orgLabel(r.organization)}
               </li>
             ))}
           </ul>
