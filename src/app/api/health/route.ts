@@ -5,7 +5,7 @@ export async function GET() {
   try {
     await callApi("api_me", [Buffer.alloc(32)]);
     return NextResponse.json(
-      { ok: true },
+      { ok: true, revision: process.env.APP_REVISION || "unknown" },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {

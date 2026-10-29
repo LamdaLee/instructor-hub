@@ -3,6 +3,9 @@
 set -euo pipefail
 umask 077
 cd "$(dirname "$0")/.."
+deploy_step=preflight
+trap 'deploy_exit_code=$?; printf "[DEPLOY_ERROR] step=%s exit=%s\n" "$deploy_step" "$deploy_exit_code" >&2' ERR
+printf '[DEPLOY] step=preflight revision=%s\n' "$(git rev-parse HEAD)"
 if [ ! -f .env ]; then echo '.env가 필요합니다.' >&2; exit 1; fi
 if ! node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'; then echo 'Node.js 22 이상이 필요합니다.' >&2; exit 1; fi
 docker compose version >/dev/null
@@ -10,13 +13,24 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then echo '수정 �
 node --env-file=.env -e 'for(const k of ["DATABASE_URL","DATABASE_ADMIN_URL","SESSION_SECRET","APP_ORIGIN"])if(!process.env[k])throw new Error(k+" 누락");if(new URL(process.env.APP_ORIGIN).protocol!=="https:")throw new Error("APP_ORIGIN은 HTTPS 주소여야 합니다.")'
 compose=(docker compose --env-file .env -f deploy/docker-compose.yml -p instructor-hub)
 "${compose[@]}" config --quiet
+deploy_step=dependencies
+printf '[DEPLOY] step=%s\n' "$deploy_step"
 npm ci --no-audit --no-fund
+deploy_step=snapshot
+printf '[DEPLOY] step=%s\n' "$deploy_step"
 node --env-file=.env scripts/snapshot.mjs ../hub-snapshots
 previous=$(docker inspect instructor-hub-hub-app-1 --format '{{.Image}}' 2>/dev/null || true)
 if [ -n "$previous" ]; then docker image tag "$previous" instructor-hub-rollback:before-portal; fi
 # 빌드가 성공한 뒤에만 DB와 실행 컨테이너를 변경한다.
-"${compose[@]}" build hub-app
+deploy_step=build
+printf '[DEPLOY] step=%s\n' "$deploy_step"
+revision=$(git rev-parse HEAD)
+"${compose[@]}" build --build-arg APP_REVISION="$revision" hub-app
+deploy_step=migrate
+printf '[DEPLOY] step=%s\n' "$deploy_step"
 npm run db:migrate
+deploy_step=start
+printf '[DEPLOY] step=%s\n' "$deploy_step"
 "${compose[@]}" up -d --no-build hub-app
 healthy=false
 for attempt in $(seq 1 30); do
@@ -35,26 +49,9 @@ if [ "$healthy" != true ]; then
  fi
  exit 1
 fi
-node --env-file=.env --input-type=module <<'JS'
-const origin=new URL(process.env.APP_ORIGIN).origin;
-const get=(path)=>fetch(origin+path,{signal:AbortSignal.timeout(15000),redirect:'manual'});
-for(const path of ['/api/health','/admin/login']){
- const res=await get(path);
- if(res.status!==200)throw new Error(path+' 응답 '+res.status);
- if(path.startsWith('/api/')&&!(await res.json()).ok)throw new Error(path+' API 점검 실패');
- console.log('운영 점검 통과:',path);
-}
-// 로그인하지 않으면 화면은 로그인으로 이동하고 API는 정보를 주지 않아야 한다.
-for(const path of ['/api/read?view=options','/api/read?view=dashboard','/api/read?view=materials']){
- const res=await get(path);
- if(res.status!==401)throw new Error(path+' 비로그인 응답 '+res.status);
- console.log('운영 점검 통과: 비로그인 차단',path);
-}
-for(const path of ['/','/admin','/org']){
- const res=await get(path);
- if(![303,307,308].includes(res.status)||!res.headers.get('location')?.includes('/admin/login'))throw new Error(path+' 로그인 보호를 확인하세요.');
-}
-console.log('운영 점검 통과: 화면 로그인 보호');
-JS
+deploy_step=verify
+printf '[DEPLOY] step=%s\n' "$deploy_step"
+node --env-file=.env scripts/verify-deployment.mjs "$revision"
+printf '[DEPLOY_OK] revision=%s\n' "$revision"
 echo '배포 완료. /admin에서 기존 관리자 계정으로 로그인하세요.'
 echo '데이터 스냅샷은 ../hub-snapshots, 교재는 Docker hub_materials 볼륨에 보관됩니다.'

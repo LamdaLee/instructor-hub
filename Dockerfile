@@ -15,7 +15,9 @@ COPY . .
 RUN npm run build
 
 FROM node:22-alpine AS run
+ARG APP_REVISION=unknown
 WORKDIR /app
+ENV APP_REVISION=$APP_REVISION
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -S hub && adduser -S hub -G hub
 COPY --from=build --chown=hub:hub /app/.next/standalone ./

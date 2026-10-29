@@ -10,8 +10,9 @@ const client = new pg.Client({
       ? { rejectUnauthorized: true }
       : undefined,
 });
-await client.connect();
+let currentFile = "setup";
 try {
+  await client.connect();
   if (mode === "migrate") {
     await client.query("SELECT pg_advisory_lock(8734033)");
     await client.query("CREATE SCHEMA IF NOT EXISTS hub_meta");
@@ -57,6 +58,8 @@ try {
   }
 } catch (e) {
   await client.query("ROLLBACK").catch(() => {});
+  console.error(`[DB_ERROR] action=${mode} file=${currentFile} code=${e.code || "unknown"}`);
+  if (e.code === "42501") console.error("[DB_PERMISSION]", e.message);
   console.error("DB 작업 실패:", e.code ?? "오류");
   process.exitCode = 1;
 } finally {
