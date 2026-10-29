@@ -230,6 +230,8 @@ const state = {
   admin: false,
   adminTab: "overview",
   week: 0,
+  rangeStart: "2026-11-02",
+  rangeEnd: "2026-11-06",
   notes: {
     "dj-ax:2026-11-02": "노트북 · AI 실습 계정 준비",
     "dg-sf:2026-11-03": "현장 사진 2장 미리 준비",
@@ -334,7 +336,7 @@ function noteMarkup(l) {
       : "";
 }
 function addAudit(action, detail) {
-  audit.unshift({ action, detail, time: "방금", who: "관리자 예시" });
+  audit.unshift({ action, detail, time: "방금", who: state.admin ? "관리자 예시" : "공개 등록자" });
 }
 function navigate(view) {
   state.view = view;
@@ -442,7 +444,7 @@ function activeFilterLabel() {
 }
 function schedule({ regional = false, admin = false } = {}) {
   const visible = selectedClasses();
-  const dates = days.map((d) => moveDay(d, state.week * 7));
+  const dates = scheduleDates();
   const count = visible
     .flatMap((c) => dates.map((d) => lesson(c, d)))
     .filter(matches).length;
@@ -454,8 +456,8 @@ function schedule({ regional = false, admin = false } = {}) {
           `<button class="secondary" data-export>${icon("download")}예시 엑셀 내려받기</button>`,
         )
       : "") +
-    filterBar({ regional }) +
-    `<div class="filter-state"><span>${activeFilterLabel()} <b>· ${count}개 수업 표시</b> / 샘플 주간</span><button data-reset>필터 초기화</button></div><div class="section-head"><div class="inline"><button class="icon-button" aria-label="이전 주" data-week="-1">${icon("left")}</button><h2>${dates[0].slice(5).replace("-", ".")} – ${dates[4].slice(5).replace("-", ".")}</h2><button class="icon-button" aria-label="다음 주" data-week="1">${icon("arrow")}</button><button class="small-link" data-this-week>예시 주간</button></div><div class="legend">${orgs
+    filterBar({ regional }) + `<form class="schedule-range" id="schedule-range"><label>시작일<input type="date" name="start" aria-label="조회 시작일" value="${state.rangeStart}" required></label><span>–</span><label>종료일<input type="date" name="end" aria-label="조회 종료일" value="${state.rangeEnd}" required></label><button class="primary" type="submit">기간 적용</button><span class="range-presets"><button type="button" data-period="week">1주</button><button type="button" data-period="month">1개월</button></span><small role="status" id="range-error"></small></form>` +
+    `<div class="filter-state"><span>${activeFilterLabel()} <b>· ${count}개 수업 표시</b> / 선택 기간</span><button data-reset>필터 초기화</button></div><div class="section-head"><div class="inline"><button class="icon-button" aria-label="이전 주" data-week="-1">${icon("left")}</button><h2>${dates[0].replaceAll("-", ".")} – ${dates.at(-1).replaceAll("-", ".")}</h2><button class="icon-button" aria-label="다음 주" data-week="1">${icon("arrow")}</button><button class="small-link" data-this-week>예시 주간</button></div><div class="legend">${orgs
       .slice(0, 4)
       .map((o) => badge(o.id))
       .join(
@@ -463,28 +465,14 @@ function schedule({ regional = false, admin = false } = {}) {
       )}</div></div>${admin ? `<div class="inline" style="margin-bottom:18px"><button class="primary" data-edit-session>${icon("plus")}수업 추가</button><button class="secondary" data-paste="schedule">${icon("grid")}엑셀 붙여 넣기</button></div>` : ""}${count ? scheduleGrid(visible, dates) + mobileSchedule(visible, dates) : `<div class="empty"><h3>조회 결과 없음</h3><p>적용 필터 확인 필요.<br>예시 일정: 2026.11.02–11.06</p><button class="secondary" data-reset>필터 초기화</button></div>`}<div class="split-note">${icon("note")}셀 메모: 해당 수업의 준비사항·주의사항. ${state.admin ? "관리자만 추가·수정 가능." : "일정·메모 수정은 관리자 전용."}</div>`
   );
 }
+function scheduleDates() {
+  const dates=[];
+  for(let d=state.rangeStart; d<=state.rangeEnd && dates.length<366; d=moveDay(d,1)) dates.push(d);
+  return dates;
+}
 function scheduleGrid(cs, dates) {
-  const groups = ["대전", "대구", "부산"]
-    .map((r) => ({ r, cs: cs.filter((c) => c.region === r) }))
-    .filter((g) => g.cs.length);
-  return `<div class="schedule-shell"><div class="schedule-scroll"><table class="schedule-table"><caption class="sr-only">날짜와 반을 교차한 주간 시간표</caption><thead><tr><th rowspan="2">날짜</th>${groups.map((g) => `<th colspan="${g.cs.length}" class="region-group">${g.r}</th>`).join("")}</tr><tr>${groups
-    .flatMap((g) => g.cs)
-    .map(
-      (c) =>
-        `<th class="track-th track-${c.track.toLowerCase()}" scope="col">${tracks[c.track].name}<br><small>${c.name} · ${c.cohort}기</small></th>`,
-    )
-    .join("")}</tr></thead><tbody>${dates
-    .map(
-      (day) =>
-        `<tr><th scope="row"><b>${Number(day.slice(-2))}</b>${weekday(day)}요일</th>${groups
-          .flatMap((g) => g.cs)
-          .map((c) => {
-            const l = lesson(c, day);
-            return `<td class="${groups.find((g) => g.r === c.region).cs.at(-1).id === c.id ? "region-end" : ""}" data-org="${matches(l) ? l.org : "empty"}">${matches(l) ? `<div class="cell-title">${esc(l.subject)}</div><div class="cell-meta">${teacher(l.teacherId)}</div><div class="cell-meta">${badge(l.org)}${assignment(l.status)}</div><small>${esc(l.module)}</small>${noteMarkup(l)}${state.admin ? `<button class="small-link" data-edit-session="${c.id}:${day}">수업 수정</button>` : ""}` : "<small>—</small>"}</td>`;
-          })
-          .join("")}</tr>`,
-    )
-    .join("")}</tbody></table></div></div>`;
+  const groups=["대전","대구","부산"].map(r=>({r,cs:cs.filter(c=>c.region===r)})).filter(g=>g.cs.length);
+  return `<div class="schedule-shell"><div class="schedule-scroll"><table class="schedule-table schedule-transposed"><caption class="sr-only">지역·트랙 행과 날짜·요일 열로 보는 시간표</caption><thead><tr><th scope="col">지역</th><th scope="col">트랙 · 반</th>${dates.map(d=>`<th scope="col" class="${['토','일'].includes(weekday(d))?'weekend':''}">${d.slice(5).replace('-','.')}<small>${weekday(d)}요일</small></th>`).join('')}</tr></thead><tbody>${groups.map(g=>g.cs.map((c,i)=>`<tr class="${i===0?'region-start':''}">${i===0?`<th class="region-row" scope="rowgroup" rowspan="${g.cs.length}">${g.r}</th>`:''}<th scope="row" class="track-row">${tracks[c.track].name}<small>${c.name} · ${c.cohort}기</small></th>${dates.map(day=>{const l=lesson(c,day);return `<td>${matches(l)?`<div class="cell-title">${esc(l.subject)}</div><div class="cell-meta">${teacher(l.teacherId)}</div><div class="cell-meta">${badge(l.org)}${assignment(l.status)}</div><small>${esc(l.module)}</small>${noteMarkup(l)}${state.admin?`<button class="small-link" data-edit-session="${c.id}:${day}">수업 수정</button>`:''}`:'<small class="no-lesson">—</small>'}</td>`}).join('')}</tr>`).join('')).join('')}</tbody></table></div></div>`;
 }
 function mobileSchedule(cs, dates) {
   return `<div class="schedule-mobile"><div class="tabs" aria-label="모바일 시간표 보기"><button data-mobile-mode="date" class="${state.mobileView === "date" ? "active" : ""}">날짜별 보기</button><button data-mobile-mode="track" class="${state.mobileView === "track" ? "active" : ""}">트랙별 보기</button></div>${
@@ -541,7 +529,7 @@ function teachersPage() {
       orgs.map((o) => o.id),
       "전체 기관",
       (v) => org(v).name,
-    )}<label class="search">강사 · 과목 검색<input type="search" data-search value="${esc(state.search)}" placeholder="이름이나 담당 과목"></label></div><div class="filter-state"><span>${count}명 표시 · ${state.org ? org(state.org).name : "전체 기관"}</span><button data-reset>필터 초기화</button></div>${window.lucian273Markup()}<p class="privacy-info">모든 연락처와 안내 메모가 공개되는 구성입니다. 목업의 연락처는 가상 정보입니다. 이전·다음 강사: 화살표 또는 J/K, 닫기: Esc.</p>`
+    )}<label class="search">강사 · 과목 검색<input type="search" data-search value="${esc(state.search)}" placeholder="이름이나 담당 과목"></label></div><div class="filter-state"><span>${count}명 표시 · ${state.org ? org(state.org).name : "전체 기관"}</span><button data-reset>필터 초기화</button></div>${people.filter(p=>!state.hiddenPeople.includes(p.id)&&(!state.org||p.org===state.org)&&(!state.search||(p.name+p.subjects).includes(state.search))).map(p=>`<article class="teacher-summary">${teacher(p.id)}${badge(p.org)}<span>${esc(p.subjects)}</span><button class="small-link" data-teacher="${p.id}">상세 정보</button></article>`).join("")}<p class="privacy-info">모든 연락처와 안내 메모가 공개되는 구성입니다. 목업의 연락처는 가상 정보입니다. 이전·다음 강사: 화살표 또는 J/K, 닫기: Esc.</p>`
   );
 }
 const materialData = [
@@ -590,11 +578,11 @@ const materialData = [
 ];
 function materialsPage() {
   const filtered = materialData.filter(
-    (m) => !state.search || m.subject.includes(state.search),
+    (m) => (state.admin || m.public !== false) && (!state.search || m.subject.includes(state.search)),
   );
   return (
-    head("교재 자료실", "") +
-    `<div class="filters"><label>과목 검색<input type="search" data-search value="${esc(state.search)}" placeholder="교과목 이름으로 찾기"></label></div><div class="material-grid">${filtered.map((m) => `<article class="material-card"><div class="file-icon ${m.format === "PPTX" ? "pptx" : ""}">${m.format}</div><h3>${esc(m.subject)}</h3><div class="lesson-teacher">${teacher(m.teacherId)}</div><p class="file-name">${esc(m.filename)}</p><div class="material-meta"><span>${m.size}</span><span>수정 2026.10.29</span></div><button class="secondary" data-download="${esc(m.filename)}">${icon("download")}교재 내려받기</button></article>`).join("")}</div><p class="privacy-info">목업에는 파일 정보만 있습니다. 운영에서는 과목·강사에 연결된 PPTX / PDF를 이곳에서 내려받습니다.</p>`
+    head("교재 자료실", "", `<button class="primary" data-upload>교재 업로드</button>`) +
+    `<div class="filters"><label>과목 검색<input type="search" data-search value="${esc(state.search)}" placeholder="교과목 이름으로 찾기"></label></div><div class="material-grid">${filtered.map((m) => `<article class="material-card"><div class="file-icon ${m.format === "PPTX" ? "pptx" : ""}">${m.format}</div><h3>${esc(m.subject)}</h3><div class="lesson-teacher">${teacher(m.teacherId)}</div><p class="file-name">${esc(m.filename)}</p><div class="material-meta"><span>${m.size}</span><span>수정 2026.10.29</span></div><button class="secondary" data-download="${esc(m.filename)}">${icon("download")}교재 내려받기</button>${state.admin ? `<div class="material-actions"><button class="secondary" data-edit-material="${materialData.indexOf(m)}">파일 수정</button><button class="secondary danger" data-delete-material="${materialData.indexOf(m)}">삭제</button></div>` : ""}</article>`).join("")}</div><p class="privacy-info">누구나 교재를 업로드할 수 있습니다. 파일 수정·삭제는 관리자 전용입니다. 예시 교재는 파일 정보만 있으며, 직접 올린 파일은 새로고침 전까지 내려받을 수 있습니다.</p>`
   );
 }
 function adminPage() {
@@ -665,15 +653,7 @@ function adminCatalog() {
     .join("")}</tbody></table></section>`;
 }
 function adminMaterials() {
-  return `<section class="panel"><div class="section-head"><h2>교재 자료 관리</h2><button class="primary" data-upload>${icon("plus")}자료 등록</button></div><div class="split-note">${icon("book")}과목과 강사를 선택해 파일을 연결합니다. 같은 과목의 다른 강사 자료도 함께 등록할 수 있습니다.</div><table class="admin-table"><thead><tr><th>파일</th><th>과목</th><th>강사</th><th>공개</th></tr></thead><tbody>${materialData
-    .slice(0, 4)
-    .map(
-      (m) =>
-        `<tr><td data-label="파일"><span style="overflow-wrap:anywhere">${esc(m.filename)}</span></td><td data-label="과목">${m.subject}</td><td data-label="강사">${teacher(m.teacherId)}</td><td data-label="공개"><span class="badge assignment">공개</span></td></tr>`,
-    )
-    .join(
-      "",
-    )}</tbody></table><p class="privacy-info">저장소 연결 후에는 파일 크기·사용량을 함께 표시합니다. 실제 업로드는 이 목업에서 실행하지 않습니다.</p></section>`;
+ return `<section class="panel"><div class="section-head"><h2>교재 자료 관리</h2><button class="primary" data-upload>교재 업로드</button></div><p class="privacy-info">과목·강사별 교재를 등록하고 파일을 교체하거나 삭제합니다. 모든 변경은 변경 기록에 남습니다.</p><div class="material-grid">${materialData.map((m,i)=>`<article class="material-card"><div class="file-icon">${m.format}</div><h3>${esc(m.subject)}</h3>${teacher(m.teacherId)}<p class="file-name">${esc(m.filename)}</p><p>${esc(m.size)} · ${m.public===false?'비공개':'공개'}</p><div class="material-actions"><button class="secondary" data-edit-material="${i}">파일 수정</button><button class="secondary danger" data-delete-material="${i}">삭제</button></div></article>`).join('')}</div></section>`;
 }
 function auditItem(a) {
   return `<div class="audit-item"><span class="audit-circle">${icon("note")}</span><div><p><strong>${esc(a.action)}</strong> · ${esc(a.detail)}</p><small>${a.time} · ${a.who} / 변경 전·후 값과 사유를 함께 보관</small></div></div>`;
@@ -718,18 +698,17 @@ function closeModal() {
   app.inert = false;
   returnFocus?.focus();
 }
-function showTeacher(id) {
-  const p = people.find((x) => x.id === id);
-  if (!p) return;
-  if (modalRoot.firstChild) closeModal();
-  state.view = "teachers";
-  state.org = "";
-  state.search = "";
-  syncUrl();
-  render();
-  const root = document.querySelector(".u273");
-  root.openTeacher(id);
-  root.scrollIntoView({ block: "nearest", behavior: "instant" });
+let teacherModalIndex=-1;
+function showTeacher(id, moving=false) {
+  const list=people.filter(p=>!state.hiddenPeople.includes(p.id));
+  const p=list.find(p=>p.id===id); if(!p)return;
+  teacherModalIndex=list.indexOf(p);
+  const origin=moving?returnFocus:document.activeElement;
+  openModal("강사 상세 정보",`<div class="teacher-modal"><div class="teacher-avatar">${esc(p.name.slice(0,1))}</div><h3>${esc(p.name)}</h3>${badge(p.org)}<dl><dt>소속</dt><dd>${esc(org(p.org).name)}</dd><dt>메일주소</dt><dd><a href="mailto:example@example.invalid">example@example.invalid</a></dd><dt>전화번호</dt><dd><a href="tel:01000000000">010-0000-0000</a></dd><dt>담당 과목</dt><dd>${esc(p.subjects)}</dd><dt>메모</dt><dd>${esc(p.memo||'등록된 메모 없음')}</dd></dl><div class="teacher-modal-nav"><button class="secondary" id="teacher-prev" ${teacherModalIndex===0?'disabled':''}>이전 강사</button><span class="teacher-index">${teacherModalIndex+1} / ${list.length}</span><button class="secondary" id="teacher-next" ${teacherModalIndex===list.length-1?'disabled':''}>다음 강사</button></div></div>`);
+  returnFocus=origin;
+  modalRoot.querySelector('[role="dialog"]').setAttribute('aria-hidden','false');
+  document.getElementById('teacher-prev').onclick=()=>showTeacher(list[teacherModalIndex-1].id,true);
+  document.getElementById('teacher-next').onclick=()=>showTeacher(list[teacherModalIndex+1].id,true);
 }
 function login() {
   openModal(
@@ -1028,25 +1007,25 @@ function confirmDelete(title, detail, fn) {
     toast("삭제 처리 완료 · 변경 기록 반영");
   };
 }
-function uploadDialog() {
-  if (!state.admin) return;
-  openModal(
-    "교재 자료 등록",
-    `<div class="form-grid"><label class="wide">교과목<select>${materialData
-      .slice(0, 5)
-      .map((m) => `<option>${m.subject}</option>`)
-      .join(
-        "",
-      )}</select></label><label>강사<select>${people.map((p) => `<option>${p.name}</option>`).join("")}</select></label><label>공개 여부<select><option>공개</option><option>비공개</option></select></label><label class="wide">PPTX · PDF 파일<input type="file" accept=".pdf,.pptx"></label></div><p class="privacy-info">목업에서는 서버 업로드를 실행하지 않습니다. 운영 저장소의 용량·파일별 제한을 확인한 뒤 연결합니다.</p><div class="dialog-actions"><button class="primary" id="mock-upload">등록 흐름 확인</button></div>`,
-  );
-  document.getElementById("mock-upload").onclick = () => {
-    addAudit("교재 등록", "가상 파일 / 저장소 연결 전 목업");
-    closeModal();
-    render();
-    toast("운영에서는 업로드 완료 후 변경 기록에 남깁니다.");
-  };
+function uploadDialog(index=null) {
+ if(index!==null&&!state.admin)return;
+ const m=index===null?null:materialData[index];
+ const subjects=[...new Set([...Object.values(curriculum).flat().map(x=>x[0]),...materialData.map(x=>x.subject)])];
+ openModal(m?'교재 파일 수정':'교재 업로드',`<form id="material-form"><div class="form-grid"><label class="wide">교과목<select name="subject">${subjects.map(x=>`<option ${x===m?.subject?'selected':''}>${esc(x)}</option>`).join('')}</select></label><label>강사<select name="teacherId">${people.filter(p=>!state.hiddenPeople.includes(p.id)).map(p=>`<option value="${p.id}" ${p.id===m?.teacherId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>${state.admin?`<label>공개 여부<select name="visibility"><option value="public">공개</option><option value="private" ${m?.public===false?'selected':''}>비공개</option></select></label>`:`<label>등록자 이름<input name="uploader" required maxlength="80" placeholder="등록자 이름"></label>`}${m?`<p class="wide file-name">현재 파일: ${esc(m.filename)}</p>`:''}<label class="wide">${m?'교체 파일 (선택)':'PPTX · PDF 파일'}<input type="file" name="file" accept=".pdf,.pptx" ${m?'':'required'}></label><label class="wide">변경 사유<input name="reason" required placeholder="등록 또는 수정 사유"></label></div><p class="privacy-info">선택한 파일은 브라우저 메모리에서만 관리합니다. 서버에 업로드되지 않으며 새로고침하면 초기화됩니다.</p><p id="file-error" role="alert"></p><div class="dialog-actions"><button class="primary" type="submit">${m?'변경 저장':'업로드'}</button></div></form>`);
+ document.getElementById('material-form').onsubmit=e=>{
+  e.preventDefault();const d=new FormData(e.target),f=d.get('file');
+  if((!m&&!f?.size)||(f?.size && (!/\.(pdf|pptx)$/i.test(f.name)||f.size>50*1024*1024))){document.getElementById('file-error').textContent='PDF 또는 PPTX 파일을 50 MB 이하로 선택하세요.';return;}
+  const next={...m,subject:d.get('subject'),teacherId:d.get('teacherId'),public:!state.admin||d.get('visibility')==='public'};
+  if(f?.size){next.filename=f.name;next.format=f.name.split('.').at(-1).toUpperCase();next.size=(f.size/1024/1024).toFixed(2)+' MB';next.file=f;}
+  if(m)materialData[index]=next;else materialData.push(next);
+  addAudit(m?'교재 파일 수정':'교재 업로드',`${m?m.filename+' → ':''}${next.filename} / ${d.get('reason')} / 등록자: ${state.admin?'관리자':d.get('uploader')}`);
+  closeModal();render();toast('교재 자료 저장 완료 · 목업 메모리 반영');
+ };
 }
 function downloadDemo(filename) {
+  const m=materialData.find(m=>m.filename===filename);
+  if(m?.file){const url=URL.createObjectURL(m.file),a=document.createElement('a');a.href=url;a.download=m.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
+
   openModal(
     "교재 내려받기",
     `<div class="lesson-detail">${icon("file")}<h3 style="overflow-wrap:anywhere">${esc(filename)}</h3></div><p class="intro">실제 파일 미연결<br>운영에서는 이 버튼으로 선택한 PDF 또는 PPTX를 내려받습니다.</p><p class="privacy-info">파일명에 과목·강사·버전을 남겨 같은 과목의 다른 강사 자료를 구분합니다.</p>`,
@@ -1066,7 +1045,7 @@ function exportDemo() {
       "메모",
     ],
     ...selectedClasses()
-      .flatMap((c) => days.map((day) => lesson(c, day)))
+      .flatMap((c) => scheduleDates().map((day) => lesson(c, day)))
       .filter(matches)
       .map((l) => [
         l.day,
@@ -1103,6 +1082,12 @@ function toast(text) {
   window.notifyLucian(text);
 }
 function bind() {
+ const range=document.getElementById('schedule-range');
+ if(range)range.onsubmit=e=>{e.preventDefault();const d=new FormData(range),start=d.get('start'),end=d.get('end');if(start>end||(new Date(end)-new Date(start))/86400000>365){document.getElementById('range-error').textContent='시작일 이후, 최대 366일 범위로 설정하세요.';return;}state.rangeStart=start;state.rangeEnd=end;render();};
+ document.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{if(b.dataset.period==='week')state.rangeEnd=moveDay(state.rangeStart,6);else{const d=new Date(state.rangeStart+'T12:00:00Z'),day=d.getUTCDate();d.setUTCMonth(d.getUTCMonth()+1,1);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));state.rangeEnd=moveDay(d.toISOString().slice(0,10),-1);}render();});
+ document.querySelectorAll('[data-edit-material]').forEach(b=>b.onclick=()=>uploadDialog(Number(b.dataset.editMaterial)));
+ document.querySelectorAll('[data-delete-material]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.deleteMaterial),m=materialData[i];confirmDelete('교재 삭제',m.filename,()=>materialData.splice(i,1));});
+
   document.querySelectorAll("[data-dashboard-region]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -1217,6 +1202,7 @@ function bind() {
         state.org = "";
         state.search = "";
         state.week = 0;
+        state.rangeStart="2026-11-02";state.rangeEnd="2026-11-06";
         syncUrl();
         render();
       }),
@@ -1224,7 +1210,8 @@ function bind() {
   document.querySelectorAll("[data-week]").forEach(
     (b) =>
       (b.onclick = () => {
-        state.week += Number(b.dataset.week);
+        state.rangeStart=moveDay(state.rangeStart,Number(b.dataset.week)*7);
+        state.rangeEnd=moveDay(state.rangeEnd,Number(b.dataset.week)*7);
         render();
       }),
   );
@@ -1232,6 +1219,7 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         state.week = 0;
+        state.rangeStart="2026-11-02";state.rangeEnd="2026-11-06";
         render();
       }),
   );
@@ -1336,10 +1324,14 @@ function bind() {
   );
   document
     .querySelectorAll("[data-upload]")
-    .forEach((b) => (b.onclick = uploadDialog));
+    .forEach((b) => (b.onclick = () => uploadDialog()));
 }
 document.addEventListener("keydown", (e) => {
   if (!modalRoot.firstChild) return;
+  if(modalRoot.querySelector('.teacher-modal')) {
+    if(['j','J','ArrowRight'].includes(e.key))document.getElementById('teacher-next')?.click();
+    if(['k','K','ArrowLeft'].includes(e.key))document.getElementById('teacher-prev')?.click();
+  }
   if (e.key === "Escape") {
     closeModal();
     return;

@@ -85,27 +85,25 @@ try {
   );
   await page.keyboard.press("Escape");
   assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.equal(await page.locator('.track-card').count(),7,"강사 모달 닫으면 대시보드 유지");
   await page
     .locator("[data-primary-nav]")
     .getByRole("button", { name: "전체 시간표", exact: true })
     .click();
-  assert.equal(await page.locator(".schedule-table tbody tr").count(), 5);
-  const cellColors = await page
-    .locator(".schedule-table tbody tr")
-    .first()
-    .locator("td")
-    .evaluateAll((cells) =>
-      cells.slice(0, 2).map((c) => getComputedStyle(c).backgroundColor),
-    );
-  assert.notEqual(cellColors[0], cellColors[1]);
-  assert.notEqual(cellColors[0], "rgb(255, 255, 255)");
-  assert.equal(
-    await page
-      .locator(".schedule-table td.region-end")
-      .first()
-      .evaluate((c) => getComputedStyle(c).borderRightWidth),
-    "3px",
-  );
+  assert.equal(await page.locator(".schedule-table tbody tr").count(), 7);
+  assert.equal(await page.locator(".schedule-table thead th").count(), 7);
+  assert.equal(await page.locator(".region-row").count(), 3);
+  const cellColors=await page.locator('.schedule-table tbody tr').first().locator('td').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
+  assert.equal(new Set(cellColors).size,1,"기관에 관계없이 중립색 셀");
+  await page.getByLabel('조회 시작일').fill('2026-11-03');
+  await page.getByLabel('조회 종료일').fill('2026-11-05');
+  await page.getByRole('button',{name:'기간 적용',exact:true}).click();
+  assert.equal(await page.locator('.schedule-table thead th').count(),5);
+  assert.ok((await page.locator('.schedule-table thead').innerText()).includes('11.03'));
+  await page.getByLabel('조회 종료일').fill('2026-11-01');
+  await page.getByRole('button',{name:'기간 적용',exact:true}).click();
+  assert.ok((await page.locator('#range-error').innerText()).includes('시작일 이후'));
+  await page.getByRole('button',{name:'예시 주간',exact:true}).click();
   await screenshot("02-timetable-desktop.png");
   await page
     .getByRole("combobox", { name: "기관 필터", exact: true })
@@ -114,6 +112,18 @@ try {
     (await page.locator(".filter-state").innerText()).includes("LAB4DX"),
   );
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
+  await page.locator('[data-primary-nav]').getByRole('button',{name:'교재 자료실',exact:true}).click();
+  assert.equal(await page.locator('[data-edit-material], [data-delete-material]').count(),0);
+  await page.getByRole('button',{name:'교재 업로드',exact:true}).click();
+  await page.getByLabel('등록자 이름').fill('등록자 예시');
+  await page.locator('input[type=file]').setInputFiles({name:'목업-교재.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 mockup')});
+  await page.getByLabel('변경 사유').fill('공개 업로드 동작 검증');
+  await page.getByRole('button',{name:'업로드',exact:true}).click();
+  assert.ok((await page.locator('.material-grid').innerText()).includes('목업-교재.pdf'));
+  const publicFile=page.locator('.material-card').filter({hasText:'목업-교재.pdf'});
+  const downloadPromise=page.waitForEvent('download');
+  await publicFile.getByRole('button',{name:'교재 내려받기',exact:true}).click();
+  assert.equal((await downloadPromise).suggestedFilename(),'목업-교재.pdf');
   await page
     .locator(".top-actions")
     .getByRole("button", { name: "관리자 로그인", exact: true })
@@ -124,6 +134,19 @@ try {
   await page
     .getByRole("heading", { name: "아카데미 운영 관리", exact: true })
     .waitFor();
+  await page.getByRole('button',{name:'자료실',exact:true}).click();
+  const managedFile=page.locator('.material-card').filter({hasText:'목업-교재.pdf'});
+  await managedFile.getByRole('button',{name:'파일 수정',exact:true}).click();
+  await page.locator('input[type=file]').setInputFiles({name:'목업-교재-v2.pptx',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation',buffer:Buffer.from('mockup')});
+  await page.getByLabel('변경 사유').fill('파일 교체 검증');
+  await page.getByRole('button',{name:'변경 저장',exact:true}).click();
+  assert.ok((await page.locator('.material-grid').innerText()).includes('목업-교재-v2.pptx'));
+  await page.locator('.material-card').filter({hasText:'목업-교재-v2.pptx'}).getByRole('button',{name:'삭제',exact:true}).click();
+  await page.getByRole('button',{name:'삭제 처리',exact:true}).click();
+  assert.equal(await page.locator('.material-card').filter({hasText:'목업-교재-v2.pptx'}).count(),0);
+  await page.getByRole('button',{name:'변경 기록',exact:true}).click();
+  assert.ok((await page.locator('main').innerText()).includes('교재 파일 수정'));
+  await page.getByRole('button',{name:'운영 개요',exact:true}).click();
   await screenshot("03-admin-desktop.png");
   const statusTab = page.getByRole("tab", { name: "임시", exact: true });
   await statusTab.click();
@@ -277,9 +300,9 @@ try {
   );
   await noOverflow();
   await page.keyboard.press("j");
-  assert.ok((await page.locator(".u273-ix").innerText()).startsWith("2"));
+  assert.ok((await page.locator(".teacher-index").innerText()).startsWith("2"));
   await page.keyboard.press("k");
-  assert.ok((await page.locator(".u273-ix").innerText()).startsWith("1"));
+  assert.ok((await page.locator(".teacher-index").innerText()).startsWith("1"));
   await page.keyboard.press("Escape");
   assert.equal(await page.getByRole("dialog").count(), 0);
   await page.locator(".top-actions [data-admin-login]").click();
@@ -306,7 +329,7 @@ try {
     .click();
   assert.deepEqual(errors, [], "브라우저 스크립트 오류 없음");
   console.log(
-    "목업 검증 통과: 중앙형 포털·엇갈린 3열 컬러 카드·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
+    "목업 검증 통과: 중앙형 포털·엇갈린 3열 컬러 카드·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·공개 파일 업로드·내려받기·관리자 교체/삭제·이력·기간 조회·중립색 시간표·강사 중앙 모달. Lucian 039/070 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
   );
 } finally {
   await browser.close();
