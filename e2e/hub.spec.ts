@@ -59,7 +59,10 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?cohort=998");
+  await page.goto("/");
+  await expect(
+    page.getByRole("combobox", { name: "기수", exact: true }),
+  ).toHaveValue("998");
   await expect(
     page.getByRole("heading", { name: "LG전자 K-뉴딜 아카데미" }),
   ).toBeVisible();

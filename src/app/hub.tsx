@@ -94,6 +94,21 @@ export default function Hub({
       params.get(k) || "",
     ]),
   );
+  if (filter.cohort === "all") filter.cohort = "";
+  if (
+    !params.has("cohort") &&
+    ["dashboard", "slots", "region"].includes(view) &&
+    options
+  ) {
+    const activeClasses = (options.classes as Row[]).filter((c) => c.active);
+    const selected = activeClasses.find((c) => c.id === filter.class_id);
+    const latest = Math.max(0, ...activeClasses.map((c) => Number(c.cohort)));
+    filter.cohort = selected
+      ? String(selected.cohort)
+      : latest
+        ? String(latest)
+        : "";
+  }
   const update = (changes: Record<string, string>) => {
     const p = new URLSearchParams(query);
     for (const [k, v] of Object.entries(changes)) {
@@ -165,7 +180,7 @@ export default function Hub({
     return () => {
       active = false;
     };
-  }, [query, revision, date]);
+  }, [query, revision, date, filter.cohort]);
   const classes: Row[] = (options?.classes || []).filter(
     (c: Row) =>
       c.active &&
@@ -464,12 +479,16 @@ export default function Hub({
                 <label key={String(key)}>
                   {String(label)}
                   <select
-                    value={filter[String(key)]}
+                    value={
+                      key === "cohort" && !filter.cohort
+                        ? "all"
+                        : filter[String(key)]
+                    }
                     onChange={(e) =>
                       update({ [String(key)]: e.target.value, class_id: "" })
                     }
                   >
-                    <option value="">전체</option>
+                    <option value={key === "cohort" ? "all" : ""}>전체</option>
                     {(values as string[]).map((v) => (
                       <option key={v} value={v}>
                         {String(key) === "cohort" ? v + "기" : v}
