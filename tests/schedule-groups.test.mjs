@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const source = ts.transpileModule(readFileSync(new URL('../src/lib/schedule-groups.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText.replace('"./regions"', JSON.stringify(new URL('../src/lib/regions.ts', import.meta.url).href));
+const { scheduleGroups } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const first = { id: 'first', region: '대전', track: 'AX', cohort: 1, day: '2026-10-26' };
+const second = { id: 'second', region: '대전', track: 'AX', cohort: 2, day: '2026-10-26' };
+const later = { ...second, id: 'later', day: '2026-11-02' };
+const overlap = scheduleGroups([first, second, later]);
+assert.equal(overlap.length, 1, '겹치는 기수는 같은 행을 공유');
+assert.equal(overlap[0].rows.filter(r => r.day === first.day).length, 2, '겹치는 날짜의 수업은 모두 보존');
+assert.deepEqual(scheduleGroups([later])[0].rows, [later], '한 기수만 있는 주는 빈 기수 행이 없음');
+assert.deepEqual(scheduleGroups([]), [], '수업이 없는 기간에는 빈 행을 생성하지 않음');
+const otherTrack = { ...second, id: 'other', track: 'SF' };
+assert.equal(scheduleGroups([first, otherTrack]).length, 2, '전체 시간표의 트랙 구분 유지');
+assert.equal(scheduleGroups([first, otherTrack]).length, 2, '지역별 시간표에서도 트랙 구분 유지');
