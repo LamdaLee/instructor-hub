@@ -70,7 +70,7 @@ window.mountLucian039 = function (root) {
       .join("");
     if (!DATA[i].length)
       ul.innerHTML =
-        '<li class="u039-row"><span><b>해당 배정이 없어요</b><small>다른 상태를 선택해 주세요.</small></span></li>';
+        '<li class="u039-row"><span><b>해당 배정 없음</b><small>다른 상태 선택</small></span></li>';
     return ul;
   }
   // 새 목록은 이동한 방향에서 들어오고, 이전 목록은 반대쪽으로 빠집니다. 줄마다 조금씩 늦게 움직입니다

@@ -46,6 +46,20 @@ try {
   await open();
   assert.equal(await page.locator(".track-card").count(), 7);
   await noOverflow();
+  assert.equal(await page.locator(".overview-strip").count(), 0);
+  assert.equal(await page.locator(".notice-card").count(), 3);
+  assert.ok(
+    await page
+      .getByRole("heading", { name: "수업 현황", exact: true })
+      .isVisible(),
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "공지 등록", exact: true }).count(),
+    0,
+  );
+  assert.ok(
+    !(await page.locator("main").innerText()).includes("오늘, 우리 아카데미"),
+  );
   await screenshot("01-dashboard-desktop.png");
   await page
     .getByRole("button", { name: "김예시", exact: false })
@@ -62,6 +76,22 @@ try {
     .getByRole("button", { name: "전체 시간표", exact: true })
     .click();
   assert.equal(await page.locator(".schedule-table tbody tr").count(), 5);
+  const cellColors = await page
+    .locator(".schedule-table tbody tr")
+    .first()
+    .locator("td")
+    .evaluateAll((cells) =>
+      cells.slice(0, 2).map((c) => getComputedStyle(c).backgroundColor),
+    );
+  assert.notEqual(cellColors[0], cellColors[1]);
+  assert.notEqual(cellColors[0], "rgb(255, 255, 255)");
+  assert.equal(
+    await page
+      .locator(".schedule-table td.region-end")
+      .first()
+      .evaluate((c) => getComputedStyle(c).borderRightWidth),
+    "3px",
+  );
   await screenshot("02-timetable-desktop.png");
   await page
     .getByRole("combobox", { name: "기관 필터", exact: true })
@@ -100,6 +130,47 @@ try {
   );
   await screenshot("07-admin-dark.png");
   await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+  await page.getByRole("button", { name: "공지사항", exact: true }).click();
+  await page.getByRole("button", { name: "공지 등록", exact: true }).click();
+  let noticeDialog = page.getByRole("dialog");
+  await noticeDialog.getByLabel("제목", { exact: true }).fill("검증용 공지");
+  await noticeDialog.getByLabel("내용", { exact: true }).fill("준비사항 확인");
+  await noticeDialog
+    .getByRole("combobox", { name: "대상 지역", exact: true })
+    .selectOption("대구");
+  await noticeDialog.getByLabel("중요 공지", { exact: true }).check();
+  await noticeDialog
+    .getByRole("button", { name: "공지 저장", exact: true })
+    .click();
+  let noticeCard = page
+    .locator(".notice-card")
+    .filter({
+      has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+    });
+  assert.ok((await noticeCard.innerText()).includes("대구"));
+  assert.ok((await noticeCard.innerText()).includes("중요"));
+  await noticeCard.getByRole("button", { name: "수정", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("내용", { exact: true })
+    .fill("변경된 준비사항");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "공지 저장", exact: true })
+    .click();
+  noticeCard = page
+    .locator(".notice-card")
+    .filter({
+      has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+    });
+  assert.ok((await noticeCard.innerText()).includes("변경된 준비사항"));
+  await noticeCard.getByRole("button", { name: "삭제", exact: true }).click();
+  await page.getByRole("button", { name: "삭제 처리", exact: true }).click();
+  assert.equal(await page.locator(".notice-card").count(), 3);
+  await page.getByRole("button", { name: "변경 기록", exact: true }).click();
+  assert.ok((await page.locator("main").innerText()).includes("공지 등록"));
+  assert.ok((await page.locator("main").innerText()).includes("공지 수정"));
+  await page.getByRole("button", { name: "운영 개요", exact: true }).click();
 
   await page
     .getByRole("button", { name: "3기 · 4기 과정 추가", exact: false })
@@ -171,9 +242,7 @@ try {
     .first()
     .click();
   assert.ok(
-    (await page.getByRole("dialog").innerText()).includes(
-      "실제 교재 파일이 없습니다",
-    ),
+    (await page.getByRole("dialog").innerText()).includes("실제 파일 미연결"),
   );
   await page.keyboard.press("Escape");
   await noOverflow();
@@ -221,7 +290,7 @@ try {
     .click();
   assert.deepEqual(errors, [], "브라우저 스크립트 오류 없음");
   console.log(
-    "목업 검증 통과: 공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
+    "목업 검증 통과: 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
   );
 } finally {
   await browser.close();

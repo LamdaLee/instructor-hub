@@ -11,6 +11,7 @@ const styles = await Promise.all(
     "lucian-070.css",
     "lucian-273.css",
     "lucian-adapter.css",
+    "operations.css",
   ].map(read),
 );
 const ports = await Promise.all(
