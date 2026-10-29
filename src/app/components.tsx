@@ -328,7 +328,7 @@ export function InstructorEditor({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title={instructor ? "강사 수정" : "강사 추가"} close={close}>
+    <Modal title={instructor ? "강사 정보 수정" : "강사 추가"} close={close}>
       <form
         className="form-grid"
         onSubmit={async (e) => {
@@ -361,6 +361,7 @@ export function InstructorEditor({
           }
         }}
       >
+        <p className="muted wide">이름만 먼저 등록해도 됩니다. 연락처·담당 과목·메모는 나중에 이 화면에서 보완할 수 있습니다. 기존 강사 정보를 수정하며 시간표 배정은 유지됩니다.</p>
         <label>
           이름
           <input
@@ -386,6 +387,8 @@ export function InstructorEditor({
           전화번호
           <input
             name="phone"
+            type="tel"
+            maxLength={50}
             autoComplete="off"
             defaultValue={instructor?.phone ?? ""}
           />
@@ -394,6 +397,7 @@ export function InstructorEditor({
           이메일
           <input
             name="email"
+            maxLength={254}
             type="email"
             autoComplete="off"
             defaultValue={instructor?.email ?? ""}

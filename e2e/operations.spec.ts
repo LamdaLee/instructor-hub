@@ -164,3 +164,25 @@ test("지역별 시간표 기수 선택과 트랙 구분선", async ({ page, con
   await expect(page.getByRole("button", { name: "트랙별 보기", exact: true })).toBeVisible();
   await expect(page.locator('.schedule-mobile summary').first()).toContainText("OPS · 976기");
 });
+
+test("포털에서 관리자 강사 정보 보완과 기관 계정 직접 수정 차단", async ({ page, context }) => {
+  await login(context, "admin");
+  await page.goto("/?view=instructors&q=가상 운영 강사");
+  await page.getByRole("button", { name: "정보 수정", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "강사 정보 수정", exact: true });
+  await editor.getByLabel("전화번호", { exact: true }).fill("000-0000-0000");
+  await editor.getByLabel("이메일", { exact: true }).fill("fixture@example.invalid");
+  await editor.getByRole("button", { name: "저장", exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  const saved = await db.query("select phone<>'' and email<>'' as completed from hub.instructors where id=$1", [person]);
+  expect(saved.rows[0].completed).toBe(true);
+  await page.getByRole("button", { name: "상세 정보", exact: true }).click();
+  await page.getByRole("button", { name: "강사 정보 수정", exact: true }).click();
+  await expect(editor).toBeVisible();
+  await editor.getByRole("button", { name: "닫기", exact: true }).click();
+  await login(context, "LGE");
+  await page.goto("/?view=instructors&q=가상 운영 강사");
+  await expect(page.getByRole("button", { name: "정보 수정", exact: true })).toHaveCount(0);
+  const response = await page.request.post("/api/save", { headers: { Origin: "http://localhost:3000" }, data: { kind: "instructor", data: { id: person, name: "가상 변경 차단", organization: "LGE", subjects: [] } } });
+  expect(response.status()).toBe(403);
+});

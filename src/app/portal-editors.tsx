@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { api, post, messages, type Row } from "@/lib/client";
 import { Modal } from "./components";
 import { Org } from "./hub";
-export function TeacherModal({ id, close }: { id: string; close: () => void }) {
+export function TeacherModal({ id, close, onEdit }: { id: string; close: () => void; onEdit?: (row: Row) => void }) {
   const [data, setData] = useState<Row>(),
     [error, setError] = useState("");
   useEffect(() => {
@@ -36,6 +36,7 @@ export function TeacherModal({ id, close }: { id: string; close: () => void }) {
           <div className="teacher-avatar">{p.name.slice(0, 1)}</div>
           <h3>{p.name}</h3>
           <Org name={p.organization} />
+          {onEdit && <div className="toolbar"><button type="button" onClick={() => onEdit(p)}>강사 정보 수정</button></div>}
           <dl>
             <dt>소속</dt>
             <dd>{orgLabel(p.organization)}</dd>

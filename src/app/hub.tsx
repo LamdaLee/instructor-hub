@@ -95,6 +95,7 @@ export default function Hub({
         : moveDay(monday(today()), 4),
     );
   const isAdmin = adminMode && operator?.role === "admin";
+  const canEditInstructors = operator?.role === "admin";
   const pending = usePendingCounts(!!(operator?.role === "admin" || operator?.review_requests || operator?.review_signups), revision);
   const filter = Object.fromEntries(
     ["region", "cohort", "track", "organization", "class_id", "q"].map((k) => [
@@ -886,7 +887,7 @@ export default function Hub({
                 <input name="q" defaultValue={filter.q} />
               </label>
               <button>검색</button>
-              {isAdmin && (
+              {canEditInstructors && (
                 <>
                   <button
                     type="button"
@@ -912,9 +913,9 @@ export default function Hub({
               ["total_days", "총 수업일수", p => `${p.total_days || 0}일`],
               ["last_day", "최근 수업일"],
               ["next_day", "다음 수업일"],
-              ["actions", "관리", p => <div className="inline"><button className="secondary" onClick={() => setTeacher(p.id)}>상세 정보</button>{isAdmin && <button className="secondary" onClick={async () => {
+              ["actions", "관리", p => <div className="inline"><button className="secondary" onClick={() => setTeacher(p.id)}>상세 정보</button>{canEditInstructors && <button className="secondary" onClick={async () => {
                 try { const d = await api("instructor", { id: p.id }); setEditor({ kind: "instructor", row: d.instructor }); } catch (e) { setError((e as Error).message); }
-              }}>수정·보관</button>}</div>],
+              }}>정보 수정</button>}</div>],
             ]} />
           </>
         )}
@@ -983,7 +984,7 @@ export default function Hub({
           />
         )}
         {teacher && (
-          <TeacherModal id={teacher} close={() => setTeacher(undefined)} />
+          <TeacherModal id={teacher} close={() => setTeacher(undefined)} onEdit={canEditInstructors ? row => { setTeacher(undefined); setEditor({ kind: "instructor", row }); } : undefined} />
         )}
       </main>
       <nav className="mobile-nav" aria-label="모바일 메뉴">
