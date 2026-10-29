@@ -53,6 +53,16 @@ do $$ declare a bytea:=decode(repeat('91',32),'hex');c bytea:=decode(repeat('92'
  r:=hub.api_me(decode(repeat('97',32),'hex'));
  assert r->'operator'->>'organization'='CLIPS' and r->'operator'->>'role'='member' and not (r->'operator'->>'review_requests')::boolean,'신규 계정은 CLIPS 일반 권한';
  assert hub.api_save(decode(repeat('97',32),'hex'),'instructor','{"name":"우회 등록","subjects":[]}')->>'code'='forbidden','기관 계정 직접 강사 수정 차단';
+ -- 로그인한 사용자는 현재 비밀번호를 확인한 뒤 새 비밀번호로 바꾼다.
+ perform hub.api_login('org-new@example.invalid','signup-password-1',decode(repeat('98',32),'hex'),'org-test');
+ assert hub.api_password(null,'signup-password-1','changed-password-2')->>'code'='session_expired','비로그인 변경 차단';
+ assert hub.api_password(decode(repeat('97',32),'hex'),'wrong-password','changed-password-2')->>'code'='invalid_credentials','현재 비밀번호 확인';
+ assert hub.api_password(decode(repeat('97',32),'hex'),'signup-password-1','short')->>'code'='weak_password','짧은 새 비밀번호 차단';
+ assert (hub.api_password(decode(repeat('97',32),'hex'),'signup-password-1','changed-password-2')->>'ok')::boolean,'비밀번호 변경';
+ assert (hub.api_me(decode(repeat('97',32),'hex'))->>'ok')::boolean,'현재 세션 유지';
+ assert hub.api_me(decode(repeat('98',32),'hex'))->>'code'='session_expired','다른 세션 만료';
+ assert hub.api_login('org-new@example.invalid','signup-password-1',decode(repeat('99',32),'hex'),'org-test')->>'code'='invalid_credentials','이전 비밀번호 차단';
+ assert (hub.api_login('org-new@example.invalid','changed-password-2',decode(repeat('99',32),'hex'),'org-test')->>'ok')::boolean,'새 비밀번호 로그인';
  begin perform hub.read_catalog(null,'options','{}');raise exception '이전 조회 함수 공개';exception when insufficient_privilege then null;end;
 end $$;
 reset role;

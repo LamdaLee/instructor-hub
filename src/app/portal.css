@@ -113,6 +113,10 @@ header.portal-header {
   font-size: 12px;
   text-decoration: none;
 }
+.secondary-access {
+  background: #e7f6f3;
+  color: #00796b !important;
+}
 .portal-main {
   max-width: 1380px;
   margin: auto;

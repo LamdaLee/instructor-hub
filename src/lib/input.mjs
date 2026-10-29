@@ -220,7 +220,10 @@ export function validSignup(d) {
     ORGS.includes(d.organization) &&
     typeof d.password === "string" &&
     d.password.length >= 10 &&
-    new TextEncoder().encode(d.password).length <= 72
+    new TextEncoder().encode(d.password).length <= 72 &&
+    Object.keys(d).every((k) =>
+      ["email", "name", "organization", "password"].includes(k),
+    )
   );
 }
 // 기관 계정 API: 조회(GET)와 신청·처리(POST)를 나눠 검사한다.

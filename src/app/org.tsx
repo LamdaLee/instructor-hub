@@ -126,6 +126,9 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
             관리자 화면
           </a>
         )}
+        <a className="admin-access secondary-access" href="/password">
+          비밀번호 변경
+        </a>
         <button
           className="admin-access"
           onClick={async () => {

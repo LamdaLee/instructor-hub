@@ -52,5 +52,7 @@ test("기관 계정 입력 검사", async () => {
   const signup = { name: "가상", email: "a@example.invalid", organization: "CLIPS", password: "long-password" };
   assert.ok(validSignup(signup));
   assert.ok(!validSignup({ ...signup, organization: "기타" }));
+  assert.ok(!validSignup({ ...signup, email: "not-email" }));
   assert.ok(!validSignup({ ...signup, password: "short" }));
+  assert.ok(!validSignup({ ...signup, extra: "x" }));
 });

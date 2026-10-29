@@ -414,6 +414,9 @@ export default function Hub({
         <a className="admin-access" href="/org">
           {adminMode ? "기관 승인" : "기관 업무"}
         </a>
+        <a className="admin-access secondary-access" href="/password">
+          비밀번호 변경
+        </a>
         <button
           className="admin-access"
           onClick={async () => {

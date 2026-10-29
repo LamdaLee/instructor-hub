@@ -129,6 +129,19 @@ async function handle(
         return response({ ok: false, code: "bad_request" });
       return response(await callApi("api_save", [token, data.kind, data.data]));
     }
+    if (action === "password" && mutation) {
+      if (
+        typeof data.current !== "string" ||
+        typeof data.next !== "string" ||
+        data.current.length > 200 ||
+        data.next.length < 10 ||
+        new TextEncoder().encode(data.next).length > 72
+      )
+        return response({ ok: false, code: "bad_request" });
+      return response(
+        await callApi("api_password", [token, data.current, data.next]),
+      );
+    }
     if (action === "org") {
       // 조회는 GET, 신청·승인·반려는 POST로만 받는다.
       const orgAction = mutation
