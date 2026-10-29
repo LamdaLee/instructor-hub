@@ -1,5 +1,6 @@
 export type Row = Record<string, any>;
 export const messages: Record<string, string> = {
+  venue_overlap: "이 반에 이미 등록된 강의장 예외 기간과 겹칩니다. 기간을 확인하세요.",
   invalid_credentials: "이메일 또는 비밀번호를 확인하세요.",
   rate_limited: "요청이 많습니다. 15분 뒤 다시 시도하세요.",
   session_expired: "로그인이 만료되었습니다.",
@@ -16,6 +17,21 @@ export const messages: Record<string, string> = {
   storage_full: "자료실 저장 공간이 부족합니다. 관리자에게 문의하세요.",
   server_error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.",
 };
+let redirecting = false;
+export function redirectToLogin() {
+  if (typeof window === "undefined" || redirecting || ["/admin/login", "/login", "/signup"].includes(window.location.pathname)) return;
+  redirecting = true;
+  window.location.replace("/admin/login?expired=1&next=" + encodeURIComponent(window.location.pathname + window.location.search));
+}
+export async function readResponse(res: Response) {
+  const result = await res.json();
+  if (!result.ok) {
+    if (result.code === "session_expired") redirectToLogin();
+    throw new Error(messages[result.code] ?? messages.server_error);
+  }
+  return result;
+}
+
 export async function api(view: string, filter: Record<string, string> = {}) {
   const query = new URLSearchParams({
     view,
@@ -24,9 +40,7 @@ export async function api(view: string, filter: Record<string, string> = {}) {
     ),
   });
   const res = await fetch("/api/read?" + query, { cache: "no-store" });
-  const r = await res.json();
-  if (!r.ok) throw new Error(messages[r.code] ?? messages.server_error);
-  return r;
+  return readResponse(res);
 }
 export async function post(action: string, data: unknown) {
   const res = await fetch("/api/" + action, {
@@ -34,9 +48,7 @@ export async function post(action: string, data: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const r = await res.json();
-  if (!r.ok) throw new Error(messages[r.code] ?? messages.server_error);
-  return r;
+  return readResponse(res);
 }
 export function today() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(

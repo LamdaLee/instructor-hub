@@ -66,8 +66,8 @@ export const slotColumns: [string, string, ((r: Row) => React.ReactNode)?][] = [
       ),
   ],
   ["organization", "기관"],
-  ["place", "장소"],
-  ["period", "시간"],
+  ["place", "장소", (r) => r.effective_place || r.place || "미등록"],
+  ["period", "시간", (r) => r.effective_start_time && r.effective_end_time ? `${r.effective_start_time.slice(0, 5)}~${r.effective_end_time.slice(0, 5)}` : r.period || "시간 확인 필요"],
   ["note", "메모"],
   ["review_reason", "확인 필요"],
   [
@@ -151,18 +151,31 @@ export function SlotEditor({
           setBusy(true);
           setError("");
           const d = Object.fromEntries(new FormData(e.currentTarget));
-          const selected = (options.instructors as Row[]).find(
-            (i) => i.id === d.instructor_id,
+          const name = String(d.instructor_name || "").trim();
+          const matches = (options.instructors as Row[]).filter(
+            (i) => i.name === name || `${i.name} · ${i.organization || "기관 없음"}` === name,
           );
+          const unchanged = !!slot?.instructor_id && name === (slot.linked_name || slot.instructor_name);
+          if (!unchanged && matches.length > 1) {
+            setError("같은 이름의 강사가 여러 명입니다. 목록에서 기관을 포함한 이름을 선택하세요.");
+            setBusy(false);
+            return;
+          }
+          const selected = unchanged ? { id: slot.instructor_id, name: slot.linked_name || slot.instructor_name } : matches[0];
           const row = {
             ...d,
-            hours: d.hours === "" ? null : Number(d.hours),
+            instructor_id: selected?.id || "",
             id: slot?.id,
             class_id: slot?.class_id ?? d.class_id,
             day: slot?.day ?? d.day,
-            instructor_name: selected?.name || d.instructor_name || "",
-            period: slot?.period ?? d.period,
+            instructor_name: selected?.name || name,
+            period: slot?.period ?? "",
           };
+          if (!!d.start_time !== !!d.end_time || (d.start_time && String(d.end_time) <= String(d.start_time))) {
+            setError("시작·종료 시간을 함께 입력하고 종료 시간을 더 늦게 지정하세요.");
+            setBusy(false);
+            return;
+          }
           try {
             const r = await post("save", {
               kind: "slots",
@@ -208,14 +221,14 @@ export function SlotEditor({
           />
         </label>
         <label>
-          시간 (선택)
-          <input
-            name="period"
-            defaultValue={slot?.period ?? ""}
-            disabled={!!slot}
-            maxLength={100}
-          />
+          시작 시간 (선택)
+          <input name="start_time" type="time" defaultValue={slot?.start_time?.slice(0, 5) || ""} />
         </label>
+        <label>
+          종료 시간 (선택)
+          <input name="end_time" type="time" defaultValue={slot?.end_time?.slice(0, 5) || ""} />
+        </label>
+        <p className="muted wide">시간을 모두 비우면 평택 외 수업은 09:00~18:00으로 표시합니다. 평택은 실제 시간을 별도로 입력하세요.</p>
         <label>
           과목
           <input
@@ -226,53 +239,13 @@ export function SlotEditor({
           />
         </label>
         <label>
-          모듈
-          <input
-            name="module"
-            list="module-options"
-            defaultValue={slot?.module ?? ""}
-            maxLength={2000}
-          />
-        </label>
-        <label>
-          시수
-          <input
-            name="hours"
-            type="number"
-            min={0}
-            max={24}
-            step={0.25}
-            defaultValue={slot?.hours ?? ""}
-          />
-        </label>
-        <datalist id="module-options">
-          {options.modules?.map((m: Row) => (
-            <option
-              key={m.track + ":" + m.subject + ":" + m.name}
-              value={m.name}
-            >
-              {m.subject} · {m.hours}시간
-            </option>
-          ))}
-        </datalist>
-        <label>
-          강사
-          <select name="instructor_id" defaultValue={slot?.instructor_id ?? ""}>
-            <option value="">미배정 / 원문 유지</option>
-            {options.instructors.map((i: Row) => (
-              <option key={i.id} value={i.id}>
-                {i.name} · {i.organization ?? "기관 없음"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          미연결 강사 원문
-          <input
-            name="instructor_name"
-            defaultValue={slot?.instructor_name ?? ""}
-            maxLength={200}
-          />
+          강사 이름
+          <input name="instructor_name" list="slot-instructor-options"
+            defaultValue={slot?.linked_name || slot?.instructor_name || ""}
+            maxLength={200} placeholder="강사 이름 입력 또는 선택" />
+          <datalist id="slot-instructor-options">
+            {options.instructors.map((i: Row) => <option key={i.id} value={`${i.name} · ${i.organization || "기관 없음"}`} />)}
+          </datalist>
         </label>
         <label>
           기관
@@ -303,10 +276,11 @@ export function SlotEditor({
           </select>
         </label>
         <label>
-          장소
+          수업별 장소 (선택)
           <input
             name="place"
             defaultValue={slot?.place ?? ""}
+            placeholder="비우면 날짜별 강의장 또는 기본 강의장 적용"
             maxLength={200}
           />
         </label>

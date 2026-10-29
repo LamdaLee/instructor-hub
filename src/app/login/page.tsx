@@ -28,9 +28,10 @@ export default function Login() {
               email: d.get("email"),
               password: d.get("password"),
             });
-            location.assign(
-              result.operator?.role === "admin" ? "/admin" : "/",
-            );
+            const next = new URLSearchParams(location.search).get("next");
+            const target = next?.startsWith("/") ? new URL(next, location.origin) : null;
+            location.assign(target?.origin === location.origin
+              ? target.pathname + target.search : result.operator?.role === "admin" ? "/admin" : "/");
           } catch (err) {
             setError((err as Error).message);
           } finally {

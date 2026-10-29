@@ -1,9 +1,13 @@
 "use client";
+import { REGIONS, regionRank } from "@/lib/regions";
+import { usePendingCounts } from "./pending-counts";
+import { Dashboard } from "./overview";
+import AccountMenu from "./account-menu";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, post, today, monday, moveDay, type Row } from "@/lib/client";
 import { isDate } from "@/lib/input.mjs";
-import { Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
+import { DataTable, Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
 import Admin from "./admin";
 import ClassSettings from "./class-settings";
 import {
@@ -54,7 +58,7 @@ export default function Hub({
   operator,
   adminMode = false,
 }: {
-  operator: { name: string; role: string } | null;
+  operator: { name: string; role: string; review_requests?: boolean; review_signups?: boolean } | null;
   adminMode?: boolean;
 }) {
   const params = useSearchParams(),
@@ -68,6 +72,7 @@ export default function Hub({
   const [options, setOptions] = useState<Row>(),
     [rows, setRows] = useState<Row[]>([]),
     [notices, setNotices] = useState<Row[]>([]),
+    [operationData, setOperationData] = useState<Row>({}),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
     [revision, setRevision] = useState(0),
@@ -88,6 +93,7 @@ export default function Hub({
         : moveDay(monday(today()), 4),
     );
   const isAdmin = adminMode && operator?.role === "admin";
+  const pending = usePendingCounts(!!(operator?.role === "admin" || operator?.review_requests || operator?.review_signups), revision);
   const filter = Object.fromEntries(
     ["region", "cohort", "track", "organization", "class_id", "q"].map((k) => [
       k,
@@ -97,7 +103,7 @@ export default function Hub({
   if (filter.cohort === "all") filter.cohort = "";
   if (
     !params.has("cohort") &&
-    ["dashboard", "slots", "region"].includes(view) &&
+    ["slots", "region"].includes(view) &&
     options
   ) {
     const activeClasses = (options.classes as Row[]).filter((c) => c.active);
@@ -130,7 +136,10 @@ export default function Hub({
     let active = true;
     api("options")
       .then((d) => {
-        if (active) setOptions(d);
+        if (active) setOptions({ ...d,
+          regions: [...d.regions].sort((a: string, b: string) => regionRank(a) - regionRank(b)),
+          classes: [...d.classes].sort((a: Row, b: Row) => regionRank(a.region) - regionRank(b.region) || a.region.localeCompare(b.region, "ko") || a.name.localeCompare(b.name, "ko")),
+        });
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -147,8 +156,8 @@ export default function Hub({
     const request =
       view === "instructors"
         ? api("instructors", filter)
-        : ["dashboard", "slots", "region"].includes(view)
-          ? api("slots", {
+        : ["dashboard", "slots", "region", "operations"].includes(view)
+          ? api(view === "operations" ? "dashboard" : "slots", {
               ...filter,
               from:
                 view === "dashboard"
@@ -164,12 +173,8 @@ export default function Hub({
                     : moveDay(monday(today()), 4),
             })
           : Promise.resolve({ rows: [] });
-    Promise.all([request, api("announcements", { region: filter.region })])
-      .then(([d, n]) => {
-        if (active) {
-          setRows(d.rows || []);
-          setNotices(n.rows || []);
-        }
+    request.then((d) => {
+        if (active) { setRows(d.rows || []); if (view === "operations") setOperationData(d); }
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -181,15 +186,21 @@ export default function Hub({
       active = false;
     };
   }, [query, revision, date, filter.cohort]);
+  useEffect(() => {
+    let active = true;
+    api("announcements", { region: filter.region }).then(d => { if (active) setNotices(d.rows || []); }).catch(e => { if (active) setError(e.message); });
+    return () => { active = false; };
+  }, [filter.region, revision]);
   const classes: Row[] = (options?.classes || []).filter(
     (c: Row) =>
       c.active &&
       (!filter.region || c.region === filter.region) &&
       (!filter.cohort || String(c.cohort) === filter.cohort) &&
       (!filter.track || c.track === filter.track) &&
-      (!filter.class_id || c.id === filter.class_id),
-  );
-  const regionOrder = ["대전", "대구", "부산"];
+      (!filter.class_id || c.id === filter.class_id) &&
+      (view !== "dashboard" || rows.some(r => r.class_id === c.id && r.day === date && r.kind === "수업")),
+  ).sort((a: Row, b: Row) => regionRank(a.region) - regionRank(b.region) || a.track.localeCompare(b.track, "ko") || a.name.localeCompare(b.name, "ko"));
+  const regionOrder = REGIONS;
   const boardRegions = filter.region
     ? [filter.region]
     : [
@@ -262,16 +273,16 @@ export default function Hub({
   const lessonCard = (r: Row) => (
     <div className="lesson-content" key={r.id}>
       <small>
-        {r.period || ""}
-        {r.hours ? " · " + r.hours + "시간" : ""}
+        {r.effective_start_time && r.effective_end_time ? `${r.effective_start_time.slice(0, 5)}~${r.effective_end_time.slice(0, 5)}` : "시간 확인 필요"}
       </small>
       <h3>{r.subject || r.kind}</h3>
-      {r.module && <p>{r.module}</p>}
+      {r.effective_place && <p>{r.effective_place}</p>}
       <div className="lesson-person">
         {teacherButton(r)}
         <Org name={r.organization} />
         <span className="assignment">{r.assignment_status}</span>
       </div>
+      {r.conflict && <p className="warning">같은 날짜에 다른 반에도 배정된 강사입니다.</p>}
       {r.note && <div className="cell-note">{r.note}</div>}
       {isAdmin && (
         <div className="session-actions">
@@ -336,7 +347,7 @@ export default function Hub({
           <span>
             강의장
             <b>
-              {lessons(c, date).find((r) => r.place)?.place ||
+              {lessons(c, date).find((r) => r.effective_place)?.effective_place ||
                 c.room ||
                 "미등록"}
             </b>
@@ -374,20 +385,20 @@ export default function Hub({
     isDate(params.get("from")) ? params.get("from")! : monday(today()),
     isDate(params.get("to")) ? params.get("to")! : moveDay(monday(today()), 4),
   );
-  const nav = [
+  const portalNav = [
     ["dashboard", "수업 현황"],
     ["slots", "전체 시간표"],
     ["region", "지역별 시간표"],
     ["instructors", "강사 정보"],
     ["materials", "교재 자료실"],
-    ...(isAdmin
-      ? [
-          ["announcements", "공지 관리"],
-          ["facilities", "강의장·매니저"],
-          ["manage", "과정·변경 기록"],
-        ]
-      : []),
   ];
+  const adminNav = isAdmin ? [
+    ["operations", "운영 점검"],
+    ["announcements", "공지 관리"],
+    ["facilities", "강의장·매니저"],
+    ["manage", "과정·변경 기록"],
+  ] : [];
+  const nav = [...portalNav, ...adminNav];
   return (
     <>
       <header className="portal-header">
@@ -399,7 +410,7 @@ export default function Hub({
           </span>
         </a>
         <nav aria-label="주 메뉴">
-          {nav.map(([v, n]) => (
+          {portalNav.map(([v, n]) => (
             <button
               className={view === v ? "active" : ""}
               key={v}
@@ -421,32 +432,18 @@ export default function Hub({
           )
         )}
         <a className="admin-access" href="/org">
-          {adminMode ? "기관 승인" : "기관 업무"}
+          {adminMode ? "기관 승인" : "기관 업무"}{pending.requests + pending.signups > 0 && <span className="count-badge">{pending.requests + pending.signups}</span>}
         </a>
-        <a className="admin-access secondary-access" href="/password">
-          비밀번호 변경
-        </a>
-        <button
-          className="admin-access"
-          onClick={async () => {
-            await post("logout", {});
-            location.assign("/admin/login");
-          }}
-        >
-          로그아웃
-        </button>
+        <AccountMenu name={operator?.name || "내 계정"} />
       </header>
+      {isAdmin && <nav className="admin-nav" aria-label="관리 메뉴">
+        <span>관리</span>{adminNav.map(([v, n]) => <button key={v} className={view === v ? "active" : ""} onClick={() => navigate(v)}>{n}</button>)}
+      </nav>}
       <main
         className={"portal-main " + (view === "dashboard" ? "portal-home" : "")}
       >
         {view === "dashboard" ? (
           <section className="portal-intro">
-            <small>과정 운영</small>
-            <h1>
-              LG전자 K-뉴딜
-              <br />
-              <span>아카데미</span>
-            </h1>
             <div className="inline centered">
               <label>
                 <span className="sr-only">수업 조회 날짜</span>
@@ -479,7 +476,7 @@ export default function Hub({
           <section className="filters portal-filters" aria-label="조회 필터">
             {options &&
               [
-                ["region", "지역", options.regions],
+                ["region", "지역", [...options.regions].sort((a, b) => regionRank(a) - regionRank(b))],
                 [
                   "cohort",
                   "기수",
@@ -540,6 +537,7 @@ export default function Hub({
           </p>
         )}
         {loading && <p role="status">불러오는 중…</p>}
+        {isAdmin && view === "operations" && !loading && <Dashboard data={operationData} />}
         {view === "dashboard" && (
           <>
             <div className="dashboard-notices">
@@ -757,9 +755,9 @@ export default function Hub({
                     <th>지역</th>
                     <th>트랙 · 반</th>
                     {displayDates.map((d) => (
-                      <th key={d}>
+                      <th key={d} className={d === today() ? "is-today" : undefined} aria-current={d === today() ? "date" : undefined}>
                         {d.slice(5).replace("-", ".")}
-                        <small>{weekday(d)}요일</small>
+                        <small>{weekday(d)}요일{d === today() ? " · 오늘" : ""}</small>
                       </th>
                     ))}
                   </tr>
@@ -792,7 +790,7 @@ export default function Hub({
                         </small>
                       </th>
                       {displayDates.map((d) => (
-                        <td key={d}>
+                        <td key={d} className={d === today() ? "is-today" : undefined}>
                           {lessons(c, d).length ? (
                             lessons(c, d).map(lessonCard)
                           ) : (
@@ -826,16 +824,16 @@ export default function Hub({
                     key={mobile === "track" ? item.id : item}
                     open={i === 0}
                   >
-                    <summary>
+                    <summary className={mobile === "date" && item === today() ? "is-today" : undefined}>
                       {mobile === "track"
                         ? `${item.region} · ${trackName(item.track)} · ${item.cohort}기`
-                        : item + " " + weekday(item) + "요일"}
+                        : item + " " + weekday(item) + "요일" + (item === today() ? " · 오늘" : "")}
                     </summary>
                     {(mobile === "track"
                       ? displayDates.flatMap((d) => lessons(item, d))
                       : classes.flatMap((c) => lessons(c, item))
                     ).map((r) => (
-                      <article key={r.id}>
+                      <article key={r.id} className={r.day === today() ? "is-today" : undefined}>
                         <small>
                           {r.day} · {r.class_name}
                         </small>
@@ -888,38 +886,18 @@ export default function Hub({
                 </>
               )}
             </form>
-            {rows.map((p) => (
-              <article className="teacher-summary" key={p.id}>
-                {teacherButton(p)}
-                <Org name={p.organization} />
-                <p>
-                  {[
-                    ...new Set([
-                      ...(p.subjects || []),
-                      ...(p.taught_subjects || []),
-                    ]),
-                  ].join(", ")}
-                </p>
-                <button className="secondary" onClick={() => setTeacher(p.id)}>
-                  상세 정보
-                </button>
-                {isAdmin && (
-                  <button
-                    className="secondary"
-                    onClick={async () => {
-                      try {
-                        const d = await api("instructor", { id: p.id });
-                        setEditor({ kind: "instructor", row: d.instructor });
-                      } catch (e) {
-                        setError((e as Error).message);
-                      }
-                    }}
-                  >
-                    수정·보관
-                  </button>
-                )}
-              </article>
-            ))}
+            <DataTable rows={rows} columns={[
+              ["name", "이름", p => teacherButton(p)],
+              ["organization", "기관", p => <Org name={p.organization} />],
+              ["subjects", "과목", p => [...new Set([...(p.subjects || []), ...(p.taught_subjects || [])])].join(", ")],
+              ["classes", "담당 반", p => (p.classes || []).join(", ") || "—"],
+              ["total_days", "총 수업일수", p => `${p.total_days || 0}일`],
+              ["last_day", "최근 수업일"],
+              ["next_day", "다음 수업일"],
+              ["actions", "관리", p => <div className="inline"><button className="secondary" onClick={() => setTeacher(p.id)}>상세 정보</button>{isAdmin && <button className="secondary" onClick={async () => {
+                try { const d = await api("instructor", { id: p.id }); setEditor({ kind: "instructor", row: d.instructor }); } catch (e) { setError((e as Error).message); }
+              }}>수정·보관</button>}</div>],
+            ]} />
           </>
         )}
         {view === "materials" && options && (
@@ -990,7 +968,7 @@ export default function Hub({
         )}
       </main>
       <nav className="mobile-nav" aria-label="모바일 메뉴">
-        {nav.map(([v, n]) => (
+        {portalNav.map(([v, n]) => (
           <button
             key={v}
             className={view === v ? "active" : ""}

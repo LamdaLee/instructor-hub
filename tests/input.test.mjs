@@ -49,6 +49,11 @@ test("기관 계정 입력 검사", async () => {
   assert.ok(!validOrg("decide", { id, decision: "reject" }, true));
   assert.ok(validOrg("decide", { id, decision: "approve" }, true));
   assert.ok(!validOrg("signups", {}, true));
+  assert.ok(validOrg("counts", {}, false));
+  assert.ok(validOrg("decide_signup", { id, decision: "reject", note: "가상 사유" }, true));
+  assert.ok(validOrg("decide_signup", { id, decision: "approve", organization: "CLIPS" }, true));
+  assert.ok(!validOrg("decide_signup", { id, decision: "approve", organization: "기타" }, true));
+  assert.ok(!validOrg("decide_signup", { id, decision: "approve", confirm_privileged: "true" }, true));
   const signup = { name: "가상", email: "a@example.invalid", organization: "CLIPS", password: "long-password" };
   assert.ok(validSignup(signup));
   assert.ok(!validSignup({ ...signup, organization: "기타" }));

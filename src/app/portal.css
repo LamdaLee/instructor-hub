@@ -1184,3 +1184,38 @@ html {
     font-size: 12px;
   }
 }
+
+/* 포털과 관리 내비게이션을 나누어 헤더 폭에 맞춘다. */
+header.portal-header { flex-wrap: wrap; }
+.portal-header nav { order: 3; flex: 1 0 100%; flex-wrap: wrap; }
+.portal-brand { margin-right: auto; min-width: 0; }
+.account-menu { position: relative; flex-shrink: 0; }
+.account-menu summary { cursor: pointer; list-style: none; padding: 10px 12px; border-radius: 12px; color: var(--ink); background: #f0f5f2; }
+.account-panel { position: absolute; z-index: 15; top: calc(100% + 8px); right: 0; width: 180px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 12px 32px #19332e18; }
+.account-panel a, .account-panel button { display: block; width: 100%; text-align: left; padding: 12px; background: none; border: 0; color: var(--ink); border-radius: 8px; font-size: 13px; }
+.admin-nav { max-width: 1220px; margin: 10px auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: #f4f7f5; flex-wrap: wrap; align-items: center; }
+.admin-nav > span { padding: 8px; color: var(--muted); font-size: 12px; }
+.admin-nav button { background: transparent; border: 0; color: #526b61; font-size: 13px; }
+.admin-nav button.active { background: #deeee7; color: #176b58; }
+.schedule-table th.is-today { background: #d8f0e5; color: #165d4a; box-shadow: inset 0 3px #168577; }
+.schedule-table td.is-today { background: #f0faf5; }
+.portal-filters label { min-width: 0; flex: 1 1 130px; }
+.portal-filters select { min-width: 0; width: 100%; }
+@media (max-width: 700px) {
+  .portal-brand { flex: 1 1 160px; }
+  .account-menu summary { font-size: 12px; padding: 10px; }
+  .admin-nav { margin: 10px 12px; gap: 4px; overflow: visible; }
+  .admin-nav > span { flex-basis: 100%; }
+  .portal-filters, .portal-home .portal-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portal-filters label { width: auto; min-width: 0; }
+  .portal-filters select { min-width: 0; font-size: 16px; }
+  .portal-filters > button { grid-column: 1/-1; }
+  .org-mobile-nav button { flex: 1; min-width: 0; min-height: 44px; }
+}
+.count-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin-left: 5px; border-radius: 99px; background: #b52850; color: white; font-size: 11px; font-weight: 700; }
+.privilege-warning { display: block; margin: 6px 0; padding: 10px 12px; border: 1px solid #e6c786; border-radius: 10px; background: #fff7e5; color: #784b13; font-size: 12px; }
+.privilege-warning p { margin: 0 0 8px; }
+.schedule-mobile summary.is-today, .schedule-mobile article.is-today { background: #f0faf5; border-left: 3px solid #168577; }
+.venue-list { display: grid; gap: 12px; margin: 20px 0; }
+.venue-list strong { overflow-wrap: anywhere; }
+.venue-list .toolbar, .class-settings td .toolbar { margin: 12px 0 0; }

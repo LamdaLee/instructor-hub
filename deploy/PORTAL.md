@@ -8,12 +8,13 @@
 cd ~/instructor-hub
 git status --short
 # 변경 중인 코드가 있다면 먼저 별도로 보존합니다. .env는 그대로 둡니다.
-git fetch origin codex/instructor-hub-portal
-git switch --track origin/codex/instructor-hub-portal
+git fetch origin main
+git switch main
+git pull --ff-only origin main
 bash scripts/deploy-portal.sh
 ```
 
-이미 해당 브랜치에 있다면 `git pull --ff-only origin codex/instructor-hub-portal` 후 스크립트를 실행합니다. 스크립트는 Node.js 22 이상, Docker Compose v2, `.env`의 `DATABASE_URL`, `DATABASE_ADMIN_URL`, `SESSION_SECRET`, `APP_ORIGIN`, `CADDY_NETWORK=deploy_default` 설정을 사용합니다. 비밀값을 출력하지 않습니다. `DATABASE_ADMIN_URL`은 스크립트에만 쓰고 앱에 전달하지 않습니다.
+이미 해당 브랜치에 있다면 `git pull --ff-only origin main` 후 스크립트를 실행합니다. 스크립트는 Node.js 22 이상, Docker Compose v2, `.env`의 `DATABASE_URL`, `DATABASE_ADMIN_URL`, `SESSION_SECRET`, `APP_ORIGIN`, `CADDY_NETWORK=deploy_default` 설정을 사용합니다. 비밀값을 출력하지 않습니다. `DATABASE_ADMIN_URL`은 스크립트에만 쓰고 앱에 전달하지 않습니다.
 
 1. npm 의존성 설치, `../hub-snapshots`에 chmod 600 gzip JSON 데이터 스냅샷을 만듭니다. `hub`와 `hub_meta`만 읽습니다. 연락처·계정 해시가 있으므로 외부 공유하지 마세요. 이 파일은 데이터 스냅샷이며 pg_dump를 대체하는 전체 DDL/역할 백업은 아닙니다.
 2. 기존 앱 이미지를 `instructor-hub-rollback:before-portal`로 보존합니다.
@@ -25,7 +26,7 @@ bash scripts/deploy-portal.sh
 
 ## 적용되는 기능과 데이터
 
-- 기본 기수는 활성 과정 중 최신 기수입니다. 전체/이전 기수는 필터로 조회할 수 있으며 이전 기수 데이터는 유지합니다.
+- 첫 화면은 전체 기수 중 선택 날짜에 수업이 있는 과정만 표시합니다. 전체/지역 시간표는 기수 필터를 지원하며 이전 기수 데이터는 유지합니다.
 - 대시보드(로그인 필요): LG전자 K-뉴딜 아카데미 타이틀, 지역/기수/트랙 필터, 오늘 수업·기관·강사·담당 매니저·강의장·교재 링크, 포스트잇 공지.
 - 관리자 메뉴의 **강의장·매니저**에서 지역/기수별 현재 값을 확인하고 수정합니다. 기본 강의장과 날짜별 수업 장소는 별도로 보존하며, 해당 수업에 장소가 있으면 그날은 수업 장소를 표시합니다. 두 필드만 변경하는 관리자 전용 API와 변경 전후 기록을 사용합니다.
 - 전체/지역 시간표: 지역·트랙 행 × 날짜·요일 열, 시작일/종료일·주/월 조회, 중립색 셀·기관색 배지, 셀 메모. 모바일은 날짜/트랙별 카드.
@@ -54,6 +55,17 @@ bash scripts/deploy-portal.sh
 ## 로그인 필수 (0013)
 
 로그인하지 않은 요청은 화면에서 `/admin/login`으로 이동하고, API·CSV·교재 다운로드·업로드는 401을 돌려줍니다. DB 함수(`hub.api_read`, `hub.api_material`)가 세션을 직접 확인하므로 앱을 우회한 호출에도 같은 제한이 적용됩니다. 열린 경로는 로그인, 가입 신청, 데이터가 없는 `/api/health`뿐입니다.
+
+## 운영 UX 보완
+
+- `/org`는 모바일 하단 기관 메뉴로 강사 변경 신청과 가입 승인에 접근합니다. 가입 승인 권한은 기존처럼 관리자·LAB4DX, 강사 변경 승인 권한은 관리자·LGE·LAB4DX입니다.
+- 대기 건수 배지는 로그인·권한을 확인한 API 결과이며 최초 로딩, 화면 복귀, 약 1분 간격, 처리 완료 시 갱신합니다.
+- LGE·LAB4DX 가입 승인에는 권한 안내와 명시적인 확인이 필요합니다. 승인 전에 소속을 정정할 수 있고 기관 정정 이력을 남깁니다.
+- 세션 만료는 API 응답 또는 화면 복귀·약 1분 간격 점검으로 감지하여 로그인 화면으로 이동합니다. 네트워크 오류만으로 로그인 화면으로 보내지 않습니다.
+- 관리 메뉴는 포털 메뉴 아래 별도 표시하고 비밀번호 변경·로그아웃은 이름을 누르는 계정 메뉴로 제공합니다.
+- 운영 점검은 미배정·확인 필요·같은 날 중복 배정을 보여줍니다. 집계 메뉴는 추가하지 않습니다.
+- 날짜별 강의장은 반별 예외 기간을 등록하고 수업별 장소 → 예외 기간 → 기본 강의장 순서로 적용합니다. 모듈·시수는 편집 화면에서 제외하되 기존 데이터는 유지합니다. 평택 외 기본 시간은 09:00~18:00이며 평택은 수업 시간을 별도로 지정합니다.
+- Teams 알림 구성 방안은 [Teams 알림 안내](TEAMS.md)를 참고하세요. 자동 전송은 아직 활성화하지 않았습니다.
 
 ## 파일 보존과 복구
 

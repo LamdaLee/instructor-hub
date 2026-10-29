@@ -1,6 +1,8 @@
 "use client";
+import { usePendingCounts } from "./pending-counts";
+import AccountMenu from "./account-menu";
 import { useEffect, useState } from "react";
-import { type Row, messages, post } from "@/lib/client";
+import { type Row, readResponse, post } from "@/lib/client";
 import { DataTable, Modal } from "./components";
 import { Org } from "./hub";
 export type OrgOperator = {
@@ -29,8 +31,7 @@ const when = (v?: string) =>
 async function orgRead(action: string, q = "") {
   const query = new URLSearchParams({ action, ...(q ? { q } : {}) });
   const res = await fetch("/api/org?" + query, { cache: "no-store" });
-  const r = await res.json();
-  if (!r.ok) throw new Error(messages[r.code] ?? messages.server_error);
+  const r = await readResponse(res);
   return r.rows as Row[];
 }
 // 기관 계정 화면: 강사 명단, 강사 변경 신청, 가입 승인.
@@ -51,6 +52,9 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
       | { kind: "remove"; row: Row }
       | { kind: "decide" | "decide_signup"; row: Row; decision: string }
     >();
+  const counts = usePendingCounts(operator.review_requests || operator.review_signups, revision);
+  const [approvalOrg, setApprovalOrg] = useState("");
+  const tabLabel = (v: string, n: string) => <>{n}{(v === "requests" ? counts.requests : v === "signups" ? counts.signups : 0) > 0 && <span className="count-badge">{v === "requests" ? counts.requests : counts.signups}</span>}</>;
   useEffect(() => {
     let active = true;
     setError("");
@@ -81,7 +85,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
   const decideButtons = (kind: "decide" | "decide_signup", r: Row) =>
     r.status === "submitted" ? (
       <span className="inline">
-        <button onClick={() => setForm({ kind, row: r, decision: "approve" })}>
+        <button onClick={() => { setApprovalOrg(r.organization); setForm({ kind, row: r, decision: "approve" }); }}>
           승인
         </button>
         <button
@@ -114,7 +118,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
               className={tab === v ? "active" : ""}
               onClick={() => setTab(v)}
             >
-              {n}
+              {tabLabel(v, n)}
             </button>
           ))}
         </nav>
@@ -126,18 +130,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
             관리자 화면
           </a>
         )}
-        <a className="admin-access secondary-access" href="/password">
-          비밀번호 변경
-        </a>
-        <button
-          className="admin-access"
-          onClick={async () => {
-            await post("logout", {});
-            location.assign("/admin/login");
-          }}
-        >
-          로그아웃
-        </button>
+        <AccountMenu name={operator?.name || "내 계정"} />
       </header>
       <main className="portal-main">
         <div className="portal-page-title">
@@ -243,7 +236,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
               ["created_at", "신청 시각", (r) => when(r.created_at)],
               ["name", "이름"],
               ["email", "이메일"],
-              ["organization", "기관", (r) => <Org name={r.organization} />],
+              ["organization", "기관", (r) => <><Org name={r.organization} />{["LGE", "LAB4DX"].includes(r.organization) && <strong className="privilege-warning">승인 권한이 부여되는 기관</strong>}</>],
               ["status", "처리", (r) => decideButtons("decide_signup", r)],
             ]}
           />
@@ -254,6 +247,9 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
           </p>
         )}
       </main>
+      <nav className="mobile-nav org-mobile-nav" aria-label="모바일 기관 메뉴">
+        {tabs.map(([v, n]) => <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>{tabLabel(v, n)}</button>)}
+      </nav>
       {form && (
         <Modal
           title={
@@ -285,6 +281,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
                   id: form.row.id,
                   decision: form.decision,
                   note: d.note,
+                  ...(form.kind === "decide_signup" && form.decision === "approve" ? { organization: approvalOrg, confirm_privileged: d.confirm_privileged === "on" } : {}),
                 });
             }}
           >
@@ -327,6 +324,15 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
                 보존됩니다.
               </p>
             )}
+            {form.kind === "decide_signup" && form.decision === "approve" && <>
+              <label className="wide">승인할 소속 기관
+                <select aria-label="승인할 소속 기관" value={approvalOrg} onChange={e => setApprovalOrg(e.target.value)}>{ORGS.map(o => <option key={o}>{o}</option>)}</select>
+              </label>
+              {["LGE", "LAB4DX"].includes(approvalOrg) && <div className="privilege-warning wide">
+                <p>{approvalOrg === "LAB4DX" ? "전체 기관 열람·강사 변경 승인·가입 승인 권한이 부여됩니다." : "전체 기관 열람·강사 변경 승인 권한이 부여됩니다."}</p>
+                <label className="inline"><input key={approvalOrg} type="checkbox" name="confirm_privileged" required />소속과 승인 권한 부여를 확인했습니다.</label>
+              </div>}
+            </>}
             {(form.kind === "decide" || form.kind === "decide_signup") &&
               form.row.reason && (
                 <p className="wide">신청 사유: {form.row.reason}</p>

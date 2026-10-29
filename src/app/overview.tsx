@@ -2,14 +2,13 @@
 import { useState } from "react";
 import { DataTable, slotColumns } from "./components";
 import { type Row, today } from "@/lib/client";
-import { matrix, instructorDays, weeklyCounts } from "@/lib/report.mjs";
+import { matrix, instructorDays } from "@/lib/report.mjs";
 export function Dashboard({ data }: { data: Row }) {
   const rows: Row[] = data.rows ?? [],
     current = today();
-  const count = weeklyCounts(rows);
   return (
     <>
-      <h1>운영 대시보드</h1>
+      <h2>이번 주 운영 현황</h2>
       <p>오늘 {current} · 이번 주 수업과 앞으로 2주간의 미배정을 확인합니다.</p>
       <div className="stats">
         <div>
@@ -31,16 +30,10 @@ export function Dashboard({ data }: { data: Row }) {
         rows={rows.filter((r) => r.day === current)}
         columns={slotColumns}
       />
-      <h2>기관별 이번 주 투입 강사</h2>
-      <DataTable
-        rows={count}
-        columns={[
-          ["name", "기관"],
-          ["total", "강사 수"],
-        ]}
-      />
       <h2>이번 주 수업</h2>
       <DataTable rows={rows} columns={slotColumns} />
+      <h2>동일 날짜 중복 배정</h2>
+      <DataTable rows={rows.filter(r => r.conflict)} columns={slotColumns} />
       <h2>다가오는 2주 강사 미배정</h2>
       <DataTable rows={data.unassigned ?? []} columns={slotColumns} />
     </>

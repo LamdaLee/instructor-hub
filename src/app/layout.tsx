@@ -1,3 +1,5 @@
+import SessionGuard from "./session-guard";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./portal.css";
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body><Suspense><SessionGuard /></Suspense>{children}</body>
     </html>
   );
 }

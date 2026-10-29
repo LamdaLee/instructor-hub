@@ -41,6 +41,7 @@ test.afterAll(async () => {
   await db.query("DELETE FROM hub.materials WHERE instructor_id=$1", [person]);
   await db.query("DELETE FROM hub.announcements WHERE title='E2E 운영 공지'");
   await db.query("DELETE FROM hub.slots WHERE class_id=$1", [classId]);
+  await db.query("DELETE FROM hub.venue_overrides WHERE class_id=$1", [classId]);
   await db.query("DELETE FROM hub.classes WHERE id=$1", [classId]);
   await db.query("DELETE FROM hub.instructors WHERE id=$1", [person]);
   await db.query("DELETE FROM hub.operators WHERE id=$1", [adminId]);
@@ -60,6 +61,7 @@ test("로그인 필수 포털·기간 시간표·강사 모달·교재 업로드
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await db.query("INSERT INTO hub.slots(class_id,day,kind) VALUES($1,(now() AT TIME ZONE 'Asia/Seoul')::date,'수업')", [classId]);
   await page.goto("/");
   await expect(page).toHaveURL(/admin\/login/);
   expect((await request.get("/api/read?view=options")).status()).toBe(401);
@@ -76,10 +78,9 @@ test("로그인 필수 포털·기간 시간표·강사 모달·교재 업로드
   await page.goto("/");
   await expect(
     page.getByRole("combobox", { name: "기수", exact: true }),
-  ).toHaveValue("998");
-  await expect(
-    page.getByRole("heading", { name: "LG전자 K-뉴딜 아카데미" }),
-  ).toBeVisible();
+  ).toHaveValue("all");
+  await expect(page.locator(".portal-brand")).toContainText("LG전자 K-뉴딜 아카데미");
+  await expect(page.locator(".portal-intro h1")).toHaveCount(0);
   await expect(page.locator(".course-card")).toHaveCount(1);
   const noAuth = await request.post("/api/save", {
     headers: { Origin: origin },
@@ -205,11 +206,9 @@ test("로그인 필수 포털·기간 시간표·강사 모달·교재 업로드
     .selectOption(classId);
   await dialog.getByLabel("날짜", { exact: true }).fill("2099-01-06");
   await dialog.getByLabel("과목", { exact: true }).fill("E2E 과목");
-  await dialog.getByLabel("모듈", { exact: true }).fill("E2E 모듈");
-  await dialog.getByLabel("시수", { exact: true }).fill("8");
-  await dialog
-    .getByRole("combobox", { name: "강사", exact: true })
-    .selectOption(person);
+  await expect(dialog.getByLabel("모듈", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel("시수", { exact: true })).toHaveCount(0);
+  await dialog.getByLabel("강사 이름", { exact: true }).fill("E2E 가상 강사");
   await dialog
     .getByRole("combobox", { name: "기관", exact: true })
     .selectOption("LGE");

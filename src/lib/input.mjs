@@ -102,6 +102,14 @@ export function validSave(kind, data) {
           data.name.trim().length > 0 &&
           data.name.length <= 200))
     );
+  if (kind === "delete_venue_override") return isUuid(data.id);
+  if (kind === "venue_override")
+    return (
+      (!data.id || isUuid(data.id)) && isUuid(data.class_id) &&
+      isDate(data.starts_on) && isDate(data.ends_on) && data.starts_on <= data.ends_on &&
+      typeof data.room === "string" && data.room.trim().length > 0 && data.room.length <= 200 &&
+      typeof data.note === "string" && data.note.length <= 2000
+    );
   if (kind === "class_settings")
     return (
       isUuid(data.id) &&
@@ -153,6 +161,11 @@ export function validSave(kind, data) {
             (k) =>
               r[k] == null || (typeof r[k] === "string" && r[k].length <= 2000),
           ) &&
+          ((r.start_time === undefined && r.end_time === undefined) ||
+            (((r.start_time === "" || r.start_time === null) && (r.end_time === "" || r.end_time === null)) ||
+              (typeof r.start_time === "string" && typeof r.end_time === "string" &&
+                /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(r.start_time) &&
+                /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(r.end_time) && r.end_time > r.start_time))) &&
           (!r.assignment_status ||
             ["임시", "변경예정", "확정"].includes(r.assignment_status)) &&
           (!r.kind || ["수업", "공통", "휴일", "없음"].includes(r.kind)),
@@ -231,7 +244,7 @@ export function validOrg(action, d, mutation) {
   if (!d || typeof d !== "object" || Array.isArray(d)) return false;
   if (!mutation)
     return (
-      ["instructors", "requests", "signups"].includes(action) &&
+      ["instructors", "requests", "signups", "counts"].includes(action) &&
       Object.entries(d).every(([k, v]) => k === "q" && text(v, 100))
     );
   if (action === "submit")
@@ -248,6 +261,7 @@ export function validOrg(action, d, mutation) {
     return (
       isUuid(d.id) &&
       ["approve", "reject"].includes(d.decision) &&
+      (action !== "decide_signup" || ((d.organization == null || ORGS.includes(d.organization)) && (d.confirm_privileged == null || typeof d.confirm_privileged === "boolean"))) &&
       text(d.note, 2000, d.decision === "reject")
     );
   return false;

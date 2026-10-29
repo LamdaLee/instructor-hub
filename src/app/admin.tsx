@@ -40,7 +40,6 @@ export default function Admin({
   };
   return (
     <>
-      <h2>과정·변경 기록</h2>
       <div className="toolbar">
         {[
           ["operators", "운영진 계정"],

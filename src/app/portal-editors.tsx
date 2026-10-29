@@ -1,4 +1,5 @@
 "use client";
+import { readResponse } from "@/lib/client";
 import { useEffect, useState } from "react";
 import { api, post, messages, type Row } from "@/lib/client";
 import { Modal } from "./components";
@@ -293,9 +294,7 @@ export function Materials({
                     reason: d.get("reason"),
                   }),
                 });
-                const r = await res.json();
-                if (!r.ok)
-                  throw new Error(messages[r.code] || messages.server_error);
+                await readResponse(res);
                 refresh();
                 setDeleting(undefined);
               } catch (e) {
@@ -356,9 +355,7 @@ export function Materials({
                   "/api/materials" + (editing ? "/" + editing.id : ""),
                   { method: "POST", body: data },
                 );
-                const d = await res.json();
-                if (!d.ok)
-                  throw new Error(messages[d.code] || messages.server_error);
+                await readResponse(res);
                 refresh();
                 setEditing(undefined);
               } catch (e) {
