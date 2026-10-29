@@ -60,7 +60,7 @@ export const slotColumns: [string, string, ((r: Row) => React.ReactNode)?][] = [
         </a>
       ) : (
         <span>
-          {r.instructor_name || "미배정"}
+          {r.instructor_name || (r.instructor_hidden ? "비공개" : "미배정")}
           {r.review_reason && <small className="warning"> 확인 필요</small>}
         </span>
       ),

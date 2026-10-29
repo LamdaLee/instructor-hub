@@ -51,6 +51,9 @@ export async function saveMaterial(req: Request, id?: string) {
 async function storeMaterial(req: Request, id?: string) {
   if (!sameOrigin(req)) return fail("forbidden", 403);
   const auth = token(req);
+  // 비로그인 업로드는 본문을 읽기 전에 거절한다.
+  if (!auth || !(await callApi("api_me", [auth])).ok)
+    return fail("session_expired", 401);
   if (id) {
     const existing = await callApi("api_material", [auth, "file", { id }]);
     if (!existing.ok) return fail("not_found", 404);
@@ -175,7 +178,10 @@ async function storeMaterial(req: Request, id?: string) {
 }
 export async function download(req: Request, id: string) {
   const result = await callApi("api_material", [token(req), "file", { id }]);
-  if (!result.ok) return fail("not_found", 404);
+  if (!result.ok)
+    return result.code === "session_expired"
+      ? fail("session_expired", 401)
+      : fail("not_found", 404);
   const m = result.material as {
     disk_key: string;
     filename: string;

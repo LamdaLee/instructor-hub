@@ -82,6 +82,7 @@ export default function Admin({
                 "권한",
                 (r) => (r.role === "admin" ? "관리자" : "운영진"),
               ],
+              ["organization", "소속 기관", (r) => r.organization ?? "—"],
               ["active", "상태", (r) => (r.active ? "활성" : "비활성")],
               [
                 "edit",
@@ -331,6 +332,22 @@ export default function Admin({
                     <option value="member">운영진</option>
                     <option value="admin">관리자</option>
                   </select>
+                </label>
+                <label>
+                  소속 기관
+                  <select
+                    name="organization"
+                    defaultValue={editing.organization ?? ""}
+                  >
+                    <option value="">없음</option>
+                    {["aSSIST", "CLIPS", "LGE", "LAB4DX"].map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
+                  </select>
+                  <small>
+                    LG전자·LAB4DX는 전체 기관 강사 변경 신청을 승인·반려하고,
+                    LAB4DX는 가입 신청을 승인합니다.
+                  </small>
                 </label>
                 <label>
                   새 비밀번호{editing.id ? " (비워두면 유지)" : ""}

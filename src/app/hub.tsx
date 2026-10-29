@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, post, today, monday, moveDay, type Row } from "@/lib/client";
 import { isDate } from "@/lib/input.mjs";
-import { courseArt } from "@/lib/course-art";
 import { Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
 import Admin from "./admin";
 import ClassSettings from "./class-settings";
@@ -200,7 +199,10 @@ export default function Hub({
       }}
       disabled={!r.instructor_id && view !== "instructors"}
     >
-      {r.linked_name || r.instructor_name || r.name || "미배정"}
+      {r.linked_name ||
+        r.instructor_name ||
+        r.name ||
+        (r.instructor_hidden ? "비공개" : "미배정")}
     </button>
   );
   const noticeCard = (n: Row, i: number) => (
@@ -295,16 +297,6 @@ export default function Hub({
   );
   const courseCard = (c: Row, i: number) => (
     <article className={"course-card tone-" + (i % 7)} key={c.id}>
-      <div
-        className="course-artboard"
-        aria-hidden="true"
-        dangerouslySetInnerHTML={{
-          __html: courseArt({
-            id: c.id,
-            track: c.track.startsWith("AX") ? "AX" : c.track,
-          }),
-        }}
-      />
       <div className="course-content">
         <button
           className="course-location"
@@ -409,20 +401,31 @@ export default function Hub({
           ))}
         </nav>
         {adminMode ? (
-          <button
-            className="admin-access"
-            onClick={async () => {
-              await post("logout", {});
-              location.assign("/");
-            }}
-          >
-            로그아웃
-          </button>
-        ) : (
-          <a className="admin-access" href="/admin">
-            관리자
+          <a className="admin-access" href="/">
+            포털
           </a>
+        ) : (
+          operator?.role === "admin" && (
+            <a className="admin-access" href="/admin">
+              관리자 화면
+            </a>
+          )
         )}
+        <a className="admin-access" href="/org">
+          {adminMode ? "기관 승인" : "기관 업무"}
+        </a>
+        <a className="admin-access secondary-access" href="/password">
+          비밀번호 변경
+        </a>
+        <button
+          className="admin-access"
+          onClick={async () => {
+            await post("logout", {});
+            location.assign("/admin/login");
+          }}
+        >
+          로그아웃
+        </button>
       </header>
       <main
         className={"portal-main " + (view === "dashboard" ? "portal-home" : "")}

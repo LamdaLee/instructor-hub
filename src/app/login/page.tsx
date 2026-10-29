@@ -7,11 +7,16 @@ export default function Login() {
   return (
     <main className="login">
       <div className="brand">
-        LG전자 K-뉴딜 아카데미 <small>관리자</small>
+        LG전자 K-뉴딜 아카데미 <small>로그인</small>
       </div>
-      <h1>관리자 로그인</h1>
-      <p>관리자 계정으로 일정과 자료를 관리합니다.</p>
-      <a href="/">공개 화면으로</a>
+      <h1>로그인</h1>
+      <p>
+        로그인한 계정만 시간표·강사·교재를 볼 수 있습니다. 기관 계정은 강사
+        변경 신청도 할 수 있습니다.
+      </p>
+      <p>
+        <a href="/signup">기관 계정 가입 신청</a>
+      </p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -23,11 +28,9 @@ export default function Login() {
               email: d.get("email"),
               password: d.get("password"),
             });
-            if (result.operator?.role !== "admin") {
-              await post("logout", {});
-              throw new Error("관리자 권한이 필요합니다.");
-            }
-            location.assign("/admin");
+            location.assign(
+              result.operator?.role === "admin" ? "/admin" : "/",
+            );
           } catch (err) {
             setError((err as Error).message);
           } finally {

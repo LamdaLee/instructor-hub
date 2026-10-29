@@ -206,7 +206,7 @@ export function Materials({
         </button>
       </div>
       <p className="privacy-info">
-        누구나 PDF·PPTX 교재를 올리고 수정·삭제할 수 있습니다. 파일당 최대 50
+        로그인한 사용자는 누구나 PDF·PPTX 교재를 올리고 수정·삭제할 수 있습니다. 파일당 최대 50
         MB.
       </p>
       {error && (

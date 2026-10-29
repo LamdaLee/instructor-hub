@@ -38,3 +38,21 @@ test("CSV 따옴표와 스프레드시트 수식 주입 방어", () => {
   assert.equal(csvCell("=1+1"), '"\'=1+1"');
   assert.equal(csvCell(" @SUM(A1)"), '"\' @SUM(A1)"');
 });
+test("기관 계정 입력 검사", async () => {
+  const { validOrg, validSignup } = await import("../src/lib/input.mjs");
+  const id = "00000000-0000-0000-0000-000000000001";
+  assert.ok(validOrg("instructors", { q: "김" }, false));
+  assert.ok(!validOrg("instructors", { organization: "CLIPS" }, false));
+  assert.ok(!validOrg("submit", { kind: "register", name: "가상" }, true));
+  assert.ok(validOrg("submit", { kind: "register", name: "가상", note: "신규" }, true));
+  assert.ok(validOrg("submit", { kind: "remove", instructor_id: id, note: "종료" }, true));
+  assert.ok(!validOrg("decide", { id, decision: "reject" }, true));
+  assert.ok(validOrg("decide", { id, decision: "approve" }, true));
+  assert.ok(!validOrg("signups", {}, true));
+  const signup = { name: "가상", email: "a@example.invalid", organization: "CLIPS", password: "long-password" };
+  assert.ok(validSignup(signup));
+  assert.ok(!validSignup({ ...signup, organization: "기타" }));
+  assert.ok(!validSignup({ ...signup, email: "not-email" }));
+  assert.ok(!validSignup({ ...signup, password: "short" }));
+  assert.ok(!validSignup({ ...signup, extra: "x" }));
+});
