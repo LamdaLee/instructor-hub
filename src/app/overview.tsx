@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { useState } from "react";
 import { DataTable, slotColumns } from "./components";
 import { type Row, today } from "@/lib/client";
@@ -84,16 +85,16 @@ export function Reports({
       <section className="toolbar">
         <label>
           시작일
-          <input
-            type="date"
+          <DatePicker
+
             value={filter.from ?? ""}
             onChange={(e) => update({ from: e.target.value })}
           />
         </label>
         <label>
           종료일
-          <input
-            type="date"
+          <DatePicker
+
             value={filter.to ?? ""}
             onChange={(e) => update({ to: e.target.value })}
           />

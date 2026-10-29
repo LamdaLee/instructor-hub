@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { useEffect, useState } from "react";
 import { api, today, type Row } from "@/lib/client";
 import { regionRank } from "@/lib/regions";
@@ -29,7 +30,7 @@ export default function MaterialLessonPicker({ organization }: { organization: s
   const matches = rows.filter(r => r.region === region && r.track === track);
   const selected = matches.find(r => r.id === slot);
   return <>
-    <label>수업 날짜<input type="date" value={day} required onChange={e => { setDay(e.target.value); setRows([]); setRegion(""); setTrack(""); setSlot(""); }} /></label>
+    <label>수업 날짜<DatePicker  value={day} required onChange={e => { setDay(e.target.value); setRows([]); setRegion(""); setTrack(""); setSlot(""); }} /></label>
     <label>지역<select value={region} required onChange={e => { setRegion(e.target.value); setTrack(""); setSlot(""); }}>
       <option value="">지역 선택</option>{regions.map(r => <option key={r}>{r}</option>)}
     </select></label>

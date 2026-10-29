@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { orgLabel } from "@/lib/organizations";
 import { REGIONS, regionRank } from "@/lib/regions";
 import { usePendingCounts } from "./pending-counts";
@@ -457,8 +458,8 @@ export default function Hub({
             <div className="inline centered">
               <label>
                 <span className="sr-only">수업 조회 날짜</span>
-                <input
-                  type="date"
+                <DatePicker
+
                   aria-label="수업 조회 날짜"
                   value={date}
                   onChange={(e) => {
@@ -664,8 +665,8 @@ export default function Hub({
             >
               <label>
                 시작일
-                <input
-                  type="date"
+                <DatePicker
+
                   required
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
@@ -674,8 +675,8 @@ export default function Hub({
               <span>–</span>
               <label>
                 종료일
-                <input
-                  type="date"
+                <DatePicker
+
                   required
                   value={to}
                   onChange={(e) => setTo(e.target.value)}

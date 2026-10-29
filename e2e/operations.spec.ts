@@ -119,3 +119,31 @@ test("DB 최종 함수가 과거 공개 정의로 바뀌어도 HTTP는 비로그
     await db.query(definition);
   }
 });
+
+test("큰 달력에서 월 이동·날짜 선택·취소와 모바일 폭 유지", async ({ page, context }) => {
+  await login(context, "admin");
+  await page.goto("/");
+  const trigger = page.getByRole("button", { name: "수업 조회 날짜", exact: true });
+  await trigger.click();
+  const calendar = page.getByRole("dialog", { name: "날짜 선택 달력" });
+  await expect(calendar).toBeVisible();
+  await calendar.getByRole("button", { name: "다음 달", exact: true }).click();
+  const first = calendar.getByRole("button", { name: /월 1일$/ });
+  const expected = await first.getAttribute("aria-label");
+  await first.click();
+  await expect(calendar).not.toBeVisible();
+  const parts = expected!.match(/(\d+)년 (\d+)월 (\d+)일/)!;
+  await expect(trigger).toContainText(`${parts[1]}. ${parts[2].padStart(2, "0")}. 01.`);
+  await trigger.click();
+  await page.keyboard.press("Escape");
+  await expect(calendar).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page.setViewportSize({ width: 320, height: 740 });
+  await trigger.click();
+  const box = await calendar.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+  await calendar.getByRole("button", { name: "오늘", exact: true }).click();
+  await expect(calendar).not.toBeVisible();
+  await expect(trigger).toContainText(today().replaceAll("-", ". "));
+});

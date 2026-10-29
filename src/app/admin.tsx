@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { orgLabel } from "@/lib/organizations";
 import { useEffect, useState } from "react";
 import { type Row, api, post } from "@/lib/client";
@@ -403,16 +404,16 @@ export default function Admin({
               <>
                 <label>
                   시작일
-                  <input
-                    type="date"
+                  <DatePicker
+
                     name="starts_on"
                     defaultValue={editing.starts_on ?? ""}
                   />
                 </label>
                 <label>
                   종료일
-                  <input
-                    type="date"
+                  <DatePicker
+
                     name="ends_on"
                     defaultValue={editing.ends_on ?? ""}
                   />

@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { orgLabel } from "@/lib/organizations";
 import { useState, useEffect, useRef } from "react";
 import { type Row, post, api, classLabel } from "@/lib/client";
@@ -213,9 +214,9 @@ export function SlotEditor({
         </label>
         <label>
           날짜
-          <input
+          <DatePicker
             name="day"
-            type="date"
+
             defaultValue={slot?.day ?? ""}
             required
             disabled={!!slot}

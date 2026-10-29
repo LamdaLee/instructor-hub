@@ -1,4 +1,5 @@
 "use client";
+import DatePicker from "./date-picker";
 import { useState } from "react";
 import { type Row, post, classLabel } from "@/lib/client";
 import { Modal } from "./components";
@@ -46,8 +47,8 @@ export default function VenueOverrides({ classRow, rows, onDone, close }: {
       } catch (e) { setError((e as Error).message); }
       finally { setBusy(false); }
     }}>
-      <label>시작일<input name="starts_on" type="date" required defaultValue={editing?.starts_on || ""} /></label>
-      <label>종료일<input name="ends_on" type="date" required defaultValue={editing?.ends_on || ""} /></label>
+      <label>시작일<DatePicker name="starts_on"  required defaultValue={editing?.starts_on || ""} /></label>
+      <label>종료일<DatePicker name="ends_on"  required defaultValue={editing?.ends_on || ""} /></label>
       <label className="wide">변경 강의장<input name="room" required maxLength={200} defaultValue={editing?.room || ""} placeholder="예: 평택 러닝센터" /></label>
       <label className="wide">메모<textarea name="note" maxLength={2000} defaultValue={editing?.note || ""} placeholder="예: 1주차 입소 교육" /></label>
       {error && <p className="error wide" role="alert">{error}</p>}

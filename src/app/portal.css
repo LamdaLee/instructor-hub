@@ -1293,3 +1293,24 @@ header.portal-header {
   header.portal-header { width: calc(100% - 24px); padding: 12px 14px; border-radius: 20px; gap: 10px; }
   .admin-nav { width: calc(100% - 24px); margin: 10px auto; }
 }
+
+.date-picker { display: inline-block; position: relative; max-width: 100%; min-width: 0; }
+.date-native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; padding: 0; border: 0; }
+.date-trigger { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 52px; padding: 12px 16px; border: 1px solid #b8d9cc; border-radius: 14px; background: #f3faf7; color: #203e34; font: inherit; font-size: 17px; white-space: nowrap; }
+.date-trigger:hover { background: #e6f4ed; }
+.calendar-dialog { box-sizing: border-box; width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow: auto; margin: auto; padding: 24px; border: 1px solid #cce0d6; border-radius: 24px; background: white; color: var(--ink); box-shadow: 0 24px 80px #173c3433; }
+.calendar-dialog::backdrop { background: #122e2859; backdrop-filter: blur(3px); }
+.calendar-heading, .calendar-month, .calendar-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.calendar-heading strong { font-size: 20px; }
+.calendar-month { margin: 24px 0 16px; font-size: 21px; font-weight: 700; }
+.calendar-month button { min-width: 44px; min-height: 44px; font-size: 24px; padding: 4px 12px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calendar-grid small { text-align: center; padding: 8px 0; font-size: 13px; color: var(--muted); }
+.calendar-grid button { min-width: 0; min-height: 44px; padding: 8px 0; border: 1px solid transparent; background: transparent; color: var(--ink); border-radius: 12px; font-size: 17px; }
+.calendar-grid button:hover { background: #e6f4ed; }
+.calendar-grid .today { border-color: #168577; color: #168577; font-weight: 700; }
+.calendar-grid .selected { background: #168577; color: white; font-weight: 700; }
+.calendar-grid .selected:hover { background: #116b5f; }
+.calendar-footer { justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.date-picker button:focus-visible { outline: 3px solid #168577; outline-offset: 2px; }
+@media (max-width: 380px) { .calendar-dialog { padding: 16px 12px; } .calendar-grid { gap: 2px; } }
