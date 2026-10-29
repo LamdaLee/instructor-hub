@@ -1,0 +1,374 @@
+/* Lucian UX/UI Prompt #039, #070, #273 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/ */
+/* 공식 CSS는 lucian-NNN.css에 그대로 보존. 아래는 프로젝트 색·가독성·배치 연결이다. */
+:root[data-theme="light"] {
+  --ux-page: var(--paper);
+  --ux-surface: var(--surface);
+  --ux-surface-2: #f2f5ee;
+  --ux-surface-3: #e7ede2;
+  --ux-ink: var(--ink);
+  --ux-ink-2: #64735f;
+  --ux-ink-3: #73846d;
+  --ux-line: var(--line);
+  --ux-line-2: #cddac5;
+  --ux-accent: var(--green);
+  --ux-accent-soft: #e7f0e5;
+  --ux-mint: #64865a;
+  --ux-warn: #b28a4f;
+  --ux-danger: #aa6b6b;
+}
+.ux {
+  font-family: inherit;
+}
+.u039 {
+  max-width: 100%;
+}
+.lucian-status-panel .u039 {
+  margin: 0 auto;
+}
+.u039-art {
+  display: grid;
+  place-items: center;
+}
+.u039-row b {
+  font-size: 14px;
+}
+.u039-row em {
+  font-size: 11px;
+}
+.u039-row span:has(> b) {
+  min-width: 0;
+}
+.u039-row b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+.u039-row small {
+  font-size: 12px;
+}
+.u070 {
+  position: fixed;
+  right: 25px;
+  bottom: 25px;
+  max-width: calc(100vw - 32px);
+  z-index: 110;
+  pointer-events: none;
+}
+.u070-zone {
+  pointer-events: auto;
+}
+.u070-t {
+  pointer-events: auto;
+}
+.u070-tx b {
+  line-height: 1.5;
+}
+.u273 {
+  width: 100%;
+  max-width: 100%;
+  height: 600px;
+}
+.u273-hd {
+  font-size: 20px;
+}
+.u273-ls {
+  top: 62px;
+  overflow: auto;
+}
+.u273-rw {
+  height: 68px;
+  padding: 0 15px;
+  gap: 14px;
+}
+.u273-rw b {
+  font-size: 16px;
+}
+.u273-rw small {
+  font-size: 13px;
+  margin-top: 4px;
+}
+.u273-rw em {
+  font-size: 12px;
+}
+.u273-rw .u273-av {
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
+}
+.u273-pn {
+  width: 440px;
+  max-width: calc(100% - 16px);
+}
+.u273-tb {
+  padding: 14px 14px 9px;
+  gap: 5px;
+}
+.u273-tb button {
+  width: 40px;
+  height: 40px;
+}
+.u273-tb svg {
+  width: 15px;
+  height: 15px;
+}
+.u273-tb span {
+  font-size: 13px;
+}
+.u273-pg {
+  padding: 14px 23px 24px;
+  overflow: auto;
+}
+.u273-pg .u273-av {
+  width: 58px;
+  height: 58px;
+  font-size: 22px;
+}
+.u273-pg h4 {
+  font-size: 23px;
+  margin-top: 14px;
+}
+.u273-pg > small {
+  font-size: 14px;
+  margin-top: 7px;
+}
+.u273-kv {
+  margin-top: 22px;
+  gap: 10px;
+}
+.u273-kv div {
+  padding: 12px;
+}
+.u273-kv small {
+  font-size: 12px;
+}
+.u273-kv b {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+.u273-pg h5 {
+  font-size: 13px;
+  margin-top: 25px;
+}
+.u273-ac {
+  font-size: 14px;
+  line-height: 1.9;
+  align-items: flex-start;
+  margin-top: 11px;
+}
+.u273-ac:before {
+  margin-top: 10px;
+}
+@media (max-width: 900px) {
+  .u070 {
+    bottom: 89px;
+    right: 16px;
+  }
+  .u273 {
+    height: 600px;
+  }
+  .u273-pn {
+    width: calc(100% - 16px);
+  }
+  .u273-kv {
+    grid-template-columns: 1fr;
+  }
+  .u273-kv b {
+    font-size: 15px;
+  }
+  .u273-pg {
+    padding: 12px 19px 20px;
+  }
+  .u273-pg h4 {
+    font-size: 22px;
+  }
+  .u273-rw {
+    height: 67px;
+  }
+  .u273-tb button {
+    width: 44px;
+    height: 44px;
+  }
+  .u039-row b {
+    max-width: 146px;
+  }
+  .u039-row {
+    gap: 9px;
+  }
+  .u039-row b {
+    font-size: 13px;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #17221c;
+  --surface: #202d25;
+  --ink: #e3ece2;
+  --muted: #a2b3a1;
+  --line: #344337;
+  --green: #9bbca0;
+  --green-soft: #2e4435;
+  --ux-page: #17221c;
+  --ux-surface: #202d25;
+  --ux-surface-2: #2b3a2e;
+  --ux-surface-3: #3c4d3d;
+  --ux-ink: #e3ece2;
+  --ux-ink-2: #b5c5b0;
+  --ux-ink-3: #a0b29a;
+  --ux-accent: #a5c4a2;
+  --ux-accent-soft: #314b35;
+  --ux-line: #344337;
+  --ux-line-2: #526750;
+  --ux-mint: #a9c79c;
+  --ux-warn: #d6b17e;
+  --ux-danger: #e0a5a1;
+}
+:root[data-theme="dark"]
+  :is(
+    .sidebar,
+    .topbar,
+    .overview-strip,
+    .track-card,
+    .date-pill,
+    .filters select,
+    .filters input,
+    .secondary,
+    .region-switch button,
+    .teacher-card,
+    .material-card,
+    .panel,
+    .drawer,
+    .dialog,
+    .schedule-shell,
+    .schedule-table td,
+    .bottom-nav,
+    .empty,
+    .day-group,
+    .mobile-lesson
+  ) {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+}
+:root[data-theme="dark"]
+  :is(
+    .lesson-box,
+    .detail,
+    .lesson-detail,
+    .privacy-info,
+    .split-note,
+    .region-summary,
+    .filter-state,
+    .schedule-table th,
+    .schedule-table thead tr:first-child th,
+    .day-group > summary,
+    .form-grid input,
+    .form-grid select,
+    .form-grid textarea,
+    .paste-input,
+    .u273-kv div,
+    .tabs,
+    .bottom-note
+  ) {
+  background: #29382c;
+  color: #b3c6a9;
+  border-color: var(--line);
+}
+:root[data-theme="dark"]
+  :is(
+    .intro,
+    .breadcrumb,
+    .nav-link,
+    .stat-label,
+    .module-name,
+    .track-meta,
+    .track-class,
+    .lesson-time,
+    .materials-link,
+    .small-link,
+    .section-head .sub,
+    .stat-note,
+    .file-name,
+    .material-meta,
+    .quiet-label,
+    .filters label,
+    .demo-foot,
+    .contact-row dt,
+    .form-grid label,
+    small,
+    .legend,
+    .region-heading button
+  ) {
+  color: #a7b99f;
+}
+:root[data-theme="dark"] .brand strong,
+:root[data-theme="dark"] .breadcrumb strong {
+  color: #d9e7d4;
+}
+:root[data-theme="dark"] .nav-link.active,
+:root[data-theme="dark"] .tabs button.active,
+:root[data-theme="dark"] .region-switch button.active {
+  background: #374d38;
+  color: #d6e6cc;
+}
+:root[data-theme="dark"] .card-note,
+:root[data-theme="dark"] .cell-note {
+  background: #3c3628;
+  color: #dcc290;
+}
+:root[data-theme="dark"] .admin-banner {
+  background: #3b3328;
+  color: #ceb892;
+}
+:root[data-theme="dark"] .org-lge {
+  background: #462f3b;
+  color: #e2b1c2;
+}
+:root[data-theme="dark"] .org-clips {
+  background: #2d3b50;
+  color: #b7c8e8;
+}
+:root[data-theme="dark"] .org-assist {
+  background: #3c304c;
+  color: #cebce5;
+}
+:root[data-theme="dark"] .org-lab {
+  background: #2b4238;
+  color: #b2d6c2;
+}
+:root[data-theme="dark"] .org-free {
+  background: #3a4230;
+  color: #c3cfaa;
+}
+:root[data-theme="dark"] .assignment {
+  background: #34462d;
+  color: #c1d7ad;
+}
+:root[data-theme="dark"] .assignment.change {
+  background: #453c2d;
+  color: #dfc590;
+}
+:root[data-theme="dark"] .assignment.temp {
+  background: #333b46;
+  color: #c0c9d6;
+}
+:root[data-theme="dark"] .primary {
+  background: #70946a;
+  color: #101c12;
+}
+:root[data-theme="dark"] .bottom-nav {
+  background: #202d25ed;
+}
+/* 좁은 관리자 그리드에서 고정형 요소가 부모를 밀어내지 않도록 한다. */
+.admin-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.admin-grid .panel {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
