@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { type Row, post, classLabel } from "@/lib/client";
+import VenueOverrides from "./venue-overrides";
 import { DataTable, Modal } from "./components";
 export default function ClassSettings({
   options,
@@ -12,6 +13,7 @@ export default function ClassSettings({
   const [region, setRegion] = useState(""),
     [cohort, setCohort] = useState(""),
     [editing, setEditing] = useState<Row>(),
+    [venueClass, setVenueClass] = useState<Row>(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [saved, setSaved] = useState("");
@@ -23,8 +25,8 @@ export default function ClassSettings({
   return (
     <section className="class-settings">
       <p className="privacy-info">
-        반별 기본 강의장과 담당 매니저를 관리합니다. 날짜별 수업에 별도 장소가
-        등록되어 있으면 그날은 해당 장소가 표시됩니다.
+        반별 기본 강의장과 담당 매니저를 관리합니다. 평택 입소나 임시 이동은
+        날짜별 강의장에 기간으로 등록하세요. 수업별로 지정한 장소가 가장 먼저 적용됩니다.
       </p>
       <div className="toolbar">
         <label>
@@ -83,6 +85,7 @@ export default function ClassSettings({
             "edit",
             "관리",
             (r) => (
+              <div className="toolbar">
               <button
                 className="secondary"
                 onClick={() => {
@@ -93,10 +96,15 @@ export default function ClassSettings({
               >
                 강의장·매니저 수정
               </button>
+              <button className="secondary" onClick={() => setVenueClass(r)}>날짜별 강의장</button>
+              </div>
             ),
           ],
         ]}
       />
+      {venueClass && <VenueOverrides classRow={venueClass}
+        rows={(options.venue_overrides || []).filter((r: Row) => r.class_id === venueClass.id)}
+        onDone={onDone} close={() => setVenueClass(undefined)} />}
       {editing && (
         <Modal
           title="강의장·매니저 수정"

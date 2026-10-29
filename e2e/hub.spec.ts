@@ -41,6 +41,7 @@ test.afterAll(async () => {
   await db.query("DELETE FROM hub.materials WHERE instructor_id=$1", [person]);
   await db.query("DELETE FROM hub.announcements WHERE title='E2E 운영 공지'");
   await db.query("DELETE FROM hub.slots WHERE class_id=$1", [classId]);
+  await db.query("DELETE FROM hub.venue_overrides WHERE class_id=$1", [classId]);
   await db.query("DELETE FROM hub.classes WHERE id=$1", [classId]);
   await db.query("DELETE FROM hub.instructors WHERE id=$1", [person]);
   await db.query("DELETE FROM hub.operators WHERE id=$1", [adminId]);
@@ -68,9 +69,8 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await expect(
     page.getByRole("combobox", { name: "기수", exact: true }),
   ).toHaveValue("all");
-  await expect(
-    page.getByRole("heading", { name: "LG전자 K-뉴딜 아카데미" }),
-  ).toBeVisible();
+  await expect(page.locator(".portal-brand")).toContainText("LG전자 K-뉴딜 아카데미");
+  await expect(page.locator(".portal-intro h1")).toHaveCount(0);
   await expect(page.locator(".course-card")).toHaveCount(1);
   const noAuth = await request.post("/api/save", {
     headers: { Origin: origin },
@@ -186,6 +186,15 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await expect(page.locator(".class-settings")).toContainText(
     "E2E 기본 강의장",
   );
+  await page.getByRole("button", { name: "날짜별 강의장", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("시작일", { exact: true }).fill("2099-01-05");
+  await dialog.getByLabel("종료일", { exact: true }).fill("2099-01-09");
+  await dialog.getByLabel("변경 강의장", { exact: true }).fill("평택 E2E 강의장");
+  await dialog.getByLabel("메모", { exact: true }).fill("1주차 입소 교육");
+  await dialog.getByRole("button", { name: "예외 기간 저장", exact: true }).click();
+  await expect(dialog.locator(".venue-list")).toContainText("평택 E2E 강의장");
+  await page.keyboard.press("Escape");
   await page.goto("/?cohort=998");
   await expect(page.locator(".course-card")).toContainText("E2E 담당 매니저");
   await expect(page.locator(".course-card")).toContainText("E2E 기본 강의장");
@@ -200,11 +209,11 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
     .selectOption(classId);
   await dialog.getByLabel("날짜", { exact: true }).fill("2099-01-06");
   await dialog.getByLabel("과목", { exact: true }).fill("E2E 과목");
-  await dialog.getByLabel("모듈", { exact: true }).fill("E2E 모듈");
-  await dialog.getByLabel("시수", { exact: true }).fill("8");
-  await dialog
-    .getByRole("combobox", { name: "강사", exact: true })
-    .selectOption(person);
+  await dialog.getByLabel("시작 시간 (선택)", { exact: true }).fill("10:00");
+  await dialog.getByLabel("종료 시간 (선택)", { exact: true }).fill("17:00");
+  await expect(dialog.getByLabel("모듈", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel("시수", { exact: true })).toHaveCount(0);
+  await dialog.getByLabel("강사 이름", { exact: true }).fill("E2E 가상 강사");
   await dialog
     .getByRole("combobox", { name: "기관", exact: true })
     .selectOption("LGE");
@@ -216,6 +225,8 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".schedule-table")).toContainText("가상 준비사항");
   await expect(page.locator(".schedule-table")).toContainText("확정");
+  await expect(page.locator(".schedule-table")).toContainText("평택 E2E 강의장");
+  await expect(page.locator(".schedule-table")).toContainText("10:00~17:00");
   await page.screenshot({
     path: test.info().outputPath("portal-timetable.png"),
     fullPage: true,

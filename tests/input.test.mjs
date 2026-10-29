@@ -38,3 +38,16 @@ test("CSV 따옴표와 스프레드시트 수식 주입 방어", () => {
   assert.equal(csvCell("=1+1"), '"\'=1+1"');
   assert.equal(csvCell(" @SUM(A1)"), '"\' @SUM(A1)"');
 });
+
+test("강의장 예외 기간과 수업 시간 입력 검증", () => {
+  const data = { class_id: "00000000-0000-0000-0000-000000000063", starts_on: "2026-11-02", ends_on: "2026-11-06", room: "평택 러닝센터", note: "1주차" };
+  assert.equal(validSave("venue_override", data), true);
+  assert.equal(validSave("venue_override", { ...data, ends_on: "2026-11-01" }), false);
+  assert.equal(validSave("venue_override", { ...data, room: " " }), false);
+  assert.equal(validSave("venue_override", { ...data, starts_on: "2026-02-30" }), false);
+  const row = { class_id: data.class_id, day: data.starts_on };
+  assert.equal(validSave("slots", { rows: [{ ...row, start_time: "10:00", end_time: "17:00" }] }), true);
+  assert.equal(validSave("slots", { rows: [{ ...row, start_time: "18:00", end_time: "09:00" }] }), false);
+  assert.equal(validSave("slots", { rows: [{ ...row, start_time: "09:00", end_time: "" }] }), false);
+  assert.equal(validSave("slots", { rows: [{ ...row, start_time: "", end_time: "" }] }), true);
+});

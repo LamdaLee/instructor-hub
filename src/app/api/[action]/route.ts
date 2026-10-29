@@ -11,6 +11,7 @@ const statuses: Record<string, number> = {
   not_found: 404,
   rate_limited: 429,
   overwrite_required: 409,
+  venue_overlap: 409,
   last_admin: 409,
   weak_password: 422,
 };
@@ -174,7 +175,11 @@ async function handle(
         "\ufeff" +
         [
           labels.map(csvCell).join(","),
-          ...rows.map((r) => columns.map((k) => csvCell(r[k])).join(",")),
+          ...rows.map((r) => columns.map((k) => csvCell(
+            k === "place" ? r.effective_place || r.place :
+            k === "period" && r.effective_start_time && r.effective_end_time
+              ? `${String(r.effective_start_time).slice(0, 5)}~${String(r.effective_end_time).slice(0, 5)}` : r[k],
+          )).join(",")),
         ].join("\r\n");
       return new Response(text, {
         headers: {

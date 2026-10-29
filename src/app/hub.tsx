@@ -267,11 +267,12 @@ export default function Hub({
   const lessonCard = (r: Row) => (
     <div className="lesson-content" key={r.id}>
       <small>
-        {r.period || ""}
-        {r.hours ? " · " + r.hours + "시간" : ""}
+        {r.effective_start_time && r.effective_end_time
+          ? `${r.effective_start_time.slice(0, 5)}~${r.effective_end_time.slice(0, 5)}`
+          : "시간 확인 필요"}
       </small>
       <h3>{r.subject || r.kind}</h3>
-      {r.module && <p>{r.module}</p>}
+      {r.effective_place && <p>{r.effective_place}</p>}
       <div className="lesson-person">
         {teacherButton(r)}
         <Org name={r.organization} />
@@ -351,7 +352,7 @@ export default function Hub({
           <span>
             강의장
             <b>
-              {lessons(c, date).find((r) => r.place)?.place ||
+              {lessons(c, date).find((r) => r.effective_place)?.effective_place ||
                 c.room ||
                 "미등록"}
             </b>
@@ -445,13 +446,6 @@ export default function Hub({
       >
         {view === "dashboard" ? (
           <section className="portal-intro">
-            <small>과정 운영</small>
-            <h1>
-              LG전자 K-뉴딜
-              <br />
-              <span>아카데미</span>
-            </h1>
-            <p className="portal-today">오늘 있는 과목을 한눈에 확인하세요.</p>
             <div className="inline centered">
               <label>
                 <span className="sr-only">수업 조회 날짜</span>

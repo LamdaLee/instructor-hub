@@ -126,21 +126,6 @@ header.portal-header {
   text-align: center;
   padding: 40px 0 28px;
 }
-.portal-intro > small {
-  font-size: 12px;
-  color: #718e83;
-  letter-spacing: 1px;
-}
-.portal-intro h1 {
-  font-size: 39px;
-  line-height: 1.2;
-  margin: 16px 0 12px;
-  letter-spacing: -1.8px;
-  color: #19332e;
-}
-.portal-intro h1 span {
-  color: var(--accent);
-}
 .portal-intro input {
   border-radius: 99px;
   background: #effaf6;
@@ -158,11 +143,6 @@ header.portal-header {
 .portal-intro button.secondary {
   background: #e9f8f2;
   color: #16816d;
-}
-.portal-today {
-  color: var(--muted);
-  font-size: 14px;
-  margin: 0 0 24px;
 }
 .portal-filters select {
   width: 100%;
@@ -915,9 +895,6 @@ html {
   .portal-intro {
     padding: 15px 0 23px;
   }
-  .portal-intro h1 {
-    font-size: 31px;
-  }
   .portal-intro .inline {
     gap: 9px;
     flex-wrap: wrap;
@@ -1241,4 +1218,17 @@ html {
     padding: 5px 7px;
     font-size: 12px;
   }
+}
+
+.venue-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.venue-list strong {
+  overflow-wrap: anywhere;
+}
+.venue-list .toolbar,
+.class-settings td .toolbar {
+  margin: 12px 0 0;
 }
