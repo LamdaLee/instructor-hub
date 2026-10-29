@@ -26,12 +26,19 @@ const html =
   "</script><script>" +
   main +
   "</script></body></html>";
-await writeFile(resolve(folder, "index-original.html"), html);
+// index-original.html은 기존 레이아웃 비교용 보존 파일이다.
 console.log("자체 포함 목업 HTML 생성 완료");
 
 const mint = html
   .replace('data-theme="light"', 'data-theme="light" data-visual="mint"')
-  .replace("</style>", "\n" + (await read("mint-reference.css")) + "</style>");
+  .replace(
+    "</style>",
+    "\n" +
+      (await read("mint-reference.css")) +
+      "\n" +
+      (await read("layout.css")) +
+      "</style>",
+  );
 await writeFile(resolve(folder, "index-mint.html"), mint);
 await writeFile(resolve(folder, "index.html"), mint);
 console.log("참고 이미지 반영 비교 목업 생성 완료");

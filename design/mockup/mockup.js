@@ -221,6 +221,7 @@ const announcements = [
 const state = {
   view: "dashboard",
   date: reference,
+  dashboardRegion: "",
   region: "",
   cohort: "2",
   track: "",
@@ -361,15 +362,14 @@ function navButton(view, label, i) {
   return `<button class="nav-link ${state.view === view ? "active" : ""}" data-view="${view}">${icon(i)}${label}</button>`;
 }
 function shell() {
-  const names = {
-    dashboard: "수업 현황",
-    schedule: "전체 시간표",
-    region: "지역별 시간표",
-    teachers: "강사 안내",
-    materials: "교재 자료실",
-    admin: "관리자 페이지",
-  };
-  return `<aside class="sidebar"><a class="brand" href="#" data-view="dashboard"><div class="brand-mark">LG</div><div><strong>K-뉴딜 아카데미</strong><span>LG전자 · 과정 운영</span></div></a><div class="nav-caption">ACADEMY</div><nav class="side-nav" aria-label="공개 메뉴">${navButton("dashboard", "수업 현황", "home")}${navButton("schedule", "전체 시간표", "calendar")}${navButton("region", "지역별 시간표", "map")}${navButton("teachers", "강사 안내", "users")}${navButton("materials", "교재 자료실", "book")}</nav><div class="sidebar-foot">${state.admin ? navButton("admin", "관리자 페이지", "shield") : `<button class="nav-link" data-admin-login>${icon("shield")}관리자 로그인</button>`}<p>수업·강사 정보 공개 조회<br>등록·수정·삭제: 관리자 전용</p></div></aside><div class="workspace"><header class="topbar"><div class="breadcrumb">LG전자 K-뉴딜 아카데미 ${icon("arrow")} <strong>${names[state.view]}</strong></div><a href="#" data-view="dashboard" class="brand mobile-brand"><div class="brand-mark">LG</div><div><strong>LG전자 K-뉴딜</strong><span>아카데미 · 수업 안내</span></div></a><div class="top-actions"><span class="mock-label">화면 목업 · 가상 데이터</span><span class="quiet-label">${icon(state.admin ? "shield" : "check")}${state.admin ? "관리자 모드" : "로그인 없이 조회"}</span><button class="icon-button" aria-label="${state.admin ? "공개 화면으로 돌아가기" : "관리자 로그인"}" ${state.admin ? "data-logout" : "data-admin-login"}>${icon(state.admin ? "logout" : "shield")}</button></div></header><main class="main" id="main">${page()}</main></div><nav class="bottom-nav" aria-label="모바일 메뉴">${[
+  const navigation = [
+    ["dashboard", "수업 현황", "home"],
+    ["schedule", "전체 시간표", "calendar"],
+    ["region", "지역별 시간표", "map"],
+    ["teachers", "강사 정보", "users"],
+    ["materials", "교재 자료실", "book"],
+  ];
+  return `<div class="workspace"><header class="topbar app-header"><a class="brand app-brand" href="#" data-view="dashboard"><div class="brand-mark">LG</div><div class="brand-copy"><strong>LG전자 K-뉴딜 아카데미</strong><span>과정 운영</span></div></a><nav class="primary-nav" data-primary-nav aria-label="공개 메뉴">${navigation.map(([v, l, i]) => navButton(v, l, i)).join("")}</nav><div class="top-actions"><span class="mock-label">가상 데이터 목업</span>${state.admin ? `<button class="admin-access ${state.view === "admin" ? "active" : ""}" data-view="admin">${icon("shield")}<span>관리자</span></button><button class="icon-button" data-logout aria-label="공개 화면으로 돌아가기">${icon("logout")}</button>` : `<button class="admin-access" data-admin-entry data-admin-login aria-label="관리자 로그인">${icon("shield")}<span>관리자</span></button>`}</div></header><main class="main" id="main">${page()}</main></div><nav class="bottom-nav" aria-label="모바일 메뉴">${[
     ["dashboard", "수업", "home"],
     ["schedule", "시간표", "calendar"],
     ["region", "지역별", "map"],
@@ -412,22 +412,29 @@ function announcementBoard(manage = false) {
   return `<section class="announcements" aria-label="공지사항"><div class="section-head"><h2>공지사항</h2>${manage ? `<button class="primary" data-add-announcement>${icon("plus")}공지 등록</button>` : '<span class="notice-access">공유사항 · 주의사항</span>'}</div><div class="notice-grid">${announcements.map((n) => `<article class="notice-card notice-${n.color}" data-notice-id="${n.id}"><div class="notice-top"><span class="notice-scope">${esc(n.scope)}</span>${n.priority ? '<span class="notice-priority">중요</span>' : ""}</div><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p><div class="notice-bottom"><small>${n.date} · ${n.author}</small>${manage ? `<span><button data-edit-announcement="${n.id}" class="notice-action">수정</button><button data-delete-announcement="${n.id}" class="notice-action">삭제</button></span>` : ""}</div></article>`).join("")}</div>${!announcements.length ? '<p class="empty">등록된 공지사항 없음</p>' : ""}</section>`;
 }
 function dashboard() {
+  const regions = ["대전", "대구", "부산"].filter(
+    (r) => !state.dashboardRegion || state.dashboardRegion === r,
+  );
   return (
     head("수업 현황", "", datePicker()) +
-    announcementBoard(state.admin) +
-    `<div class="section-head"><h2>지역별 수업</h2><div class="legend">강사 배정 ${assignment("확정")}${assignment("임시")}${assignment("변경예정")}</div></div><div class="region-grid">${[
-      "대전",
-      "대구",
-      "부산",
+    `<div class="dashboard-layout"><aside class="notice-rail" aria-label="공지 영역">${announcementBoard(state.admin)}</aside><section class="classroom-overview" aria-label="지역별 수업 영역"><div class="classroom-toolbar"><div class="dashboard-region-tabs" role="group" aria-label="수업 지역 선택">${[
+      ["", "전체 지역"],
+      ["대전", "대전"],
+      ["대구", "대구"],
+      ["부산", "부산"],
     ]
       .map(
-        (r) =>
-          `<section class="region-column"><div class="region-heading"><div class="region-name">${icon("map")}<b>${r}</b></div><button data-region="${r}">지역 시간표 ${icon("arrow")}</button></div>${classes
-            .filter((c) => c.region === r && c.cohort === 2)
-            .map(trackCard)
-            .join("")}</section>`,
+        ([v, l]) =>
+          `<button aria-pressed="${(state.dashboardRegion || "") === v}" data-dashboard-region="${v}">${l}</button>`,
       )
-      .join("")}</div>`
+      .join(
+        "",
+      )}</div><div class="legend">배정 ${assignment("확정")}${assignment("임시")}${assignment("변경예정")}</div></div><div class="region-grid regional-rows">${regions
+      .map((r) => {
+        const group = classes.filter((c) => c.region === r && c.cohort === 2);
+        return `<section class="region-column"><div class="region-heading"><div class="region-name">${icon("map")}<h2>${r}</h2></div><button data-region="${r}">지역 시간표 ${icon("arrow")}</button></div><div class="region-class-grid" style="--class-columns:${group.length}">${group.map(trackCard).join("")}</div></section>`;
+      })
+      .join("")}</div></section></div>`
   );
 }
 function trackCard(c) {
@@ -1118,6 +1125,14 @@ function toast(text) {
   window.notifyLucian(text);
 }
 function bind() {
+  document.querySelectorAll("[data-dashboard-region]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        state.dashboardRegion = b.dataset.dashboardRegion;
+        render();
+      }),
+  );
+
   document
     .querySelectorAll("[data-add-announcement]")
     .forEach((b) => (b.onclick = () => announcementEditor()));

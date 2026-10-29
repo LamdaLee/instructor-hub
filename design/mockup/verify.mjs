@@ -18,11 +18,8 @@ const page = await browser.newPage({
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 const mint = process.argv.includes("--mint");
-const original = process.argv.includes("--original");
-const content = await readFile(
-  resolve(folder, original ? "index-original.html" : mint ? "index-mint.html" : "index.html"),
-);
-const captureFolder = original ? resolve(folder, "screenshots/original") : mint ? resolve(folder, "screenshots/mint") : resolve(folder, "screenshots");
+const content = await readFile(resolve(folder, mint ? 'index-mint.html' : 'index.html'));
+const captureFolder = mint ? resolve(folder,'screenshots/mint') : resolve(folder,'screenshots');
 await mkdir(captureFolder, { recursive: true });
 const server = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -66,6 +63,12 @@ try {
   assert.ok(
     !(await page.locator("main").innerText()).includes("오늘, 우리 아카데미"),
   );
+  assert.equal(await page.locator("aside.sidebar").count(), 0);
+  assert.ok(await page.locator("[data-primary-nav]").isVisible());
+  await page.getByRole("button", { name: "대구", exact: true }).click();
+  assert.equal(await page.locator(".track-card").count(), 2);
+  await page.getByRole("button", { name: "전체 지역", exact: true }).click();
+  assert.equal(await page.locator(".track-card").count(), 7);
   await screenshot("01-dashboard-desktop.png");
   await page
     .getByRole("button", { name: "김예시", exact: false })
@@ -78,7 +81,7 @@ try {
   await page.keyboard.press("Escape");
   assert.equal(await page.getByRole("dialog").count(), 0);
   await page
-    .locator(".side-nav")
+    .locator("[data-primary-nav]")
     .getByRole("button", { name: "전체 시간표", exact: true })
     .click();
   assert.equal(await page.locator(".schedule-table tbody tr").count(), 5);
@@ -107,7 +110,7 @@ try {
   );
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
   await page
-    .locator(".sidebar-foot")
+    .locator(".top-actions")
     .getByRole("button", { name: "관리자 로그인", exact: true })
     .click();
   await page
@@ -214,6 +217,12 @@ try {
   await page.setViewportSize({ width: 390, height: 1000 });
   await open();
   await noOverflow();
+  assert.ok(!(await page.locator("[data-primary-nav]").isVisible()));
+  const noticeScroll = page.locator(".notice-rail .notice-grid");
+  assert.ok(await noticeScroll.evaluate((e) => e.scrollWidth > e.clientWidth));
+  await noticeScroll.evaluate((e) => (e.scrollLeft = 100));
+  assert.ok(await noticeScroll.evaluate((e) => e.scrollLeft > 0));
+  await noticeScroll.evaluate((e) => (e.scrollLeft = 0));
   await screenshot("04-dashboard-mobile.png", false);
   await page
     .locator(".bottom-nav")
@@ -292,7 +301,7 @@ try {
     .click();
   assert.deepEqual(errors, [], "브라우저 스크립트 오류 없음");
   console.log(
-    "목업 검증 통과: 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
+    "목업 검증 통과: 상단 메뉴·좌우 영역 재배치·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
   );
 } finally {
   await browser.close();
