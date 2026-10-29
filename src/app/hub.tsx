@@ -165,12 +165,9 @@ export default function Hub({
                     : moveDay(monday(today()), 4),
             })
           : Promise.resolve({ rows: [] });
-    Promise.all([request, api("announcements", { region: filter.region })])
-      .then(([d, n]) => {
-        if (active) {
-          setRows(d.rows || []);
-          setNotices(n.rows || []);
-        }
+    request
+      .then((d) => {
+        if (active) setRows(d.rows || []);
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -182,6 +179,20 @@ export default function Hub({
       active = false;
     };
   }, [query, revision, date, filter.cohort]);
+  useEffect(() => {
+    let active = true;
+    setNotices([]);
+    api("announcements", { region: filter.region })
+      .then((d) => {
+        if (active) setNotices(d.rows || []);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [filter.region, revision]);
   const classes: Row[] = (options?.classes || []).filter(
     (c: Row) =>
       c.active &&

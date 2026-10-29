@@ -55,3 +55,33 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(page.getByText("선택한 날짜와 조건에 맞는 수업이 없습니다.")).toBeVisible();
   });
 }
+
+test("공지 응답을 기다리지 않고 카드를 표시하고 날짜 변경 시 공지를 재조회하지 않음", async ({ page }) => {
+  let releaseNotice!: () => void;
+  const noticeReady = new Promise<void>(resolve => { releaseNotice = resolve; });
+  let noticeRequests = 0;
+  await page.route("**/api/read?**", async route => {
+    const url = new URL(route.request().url());
+    const view = url.searchParams.get("view");
+    if (view === "announcements") {
+      noticeRequests++;
+      await noticeReady;
+      await route.fulfill({ json: { ok: true, rows: [] } });
+    } else if (view === "options") {
+      await route.fulfill({ json: { ok: true, classes, regions: ["대전"], organizations: ["LGE"] } });
+    } else {
+      await route.fulfill({ json: { ok: true, rows: slots.filter(r => r.day === url.searchParams.get("from")) } });
+    }
+  });
+  try {
+    await page.goto("/");
+    await expect(page.locator(".course-card")).toHaveCount(2);
+    await expect(page.getByRole("status")).toHaveCount(0);
+    expect(noticeRequests).toBe(1);
+    await page.getByLabel("수업 조회 날짜", { exact: true }).fill(moveDay(today(), 1));
+    await expect(page.locator(".course-card")).toHaveCount(1);
+    expect(noticeRequests).toBe(1);
+  } finally {
+    releaseNotice();
+  }
+});
