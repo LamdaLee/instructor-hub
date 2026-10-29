@@ -1,4 +1,5 @@
 import pg from "pg";
+import { ensureMigrationRole } from "./migration-role.mjs";
 import { readdir, readFile } from "node:fs/promises";
 const mode = process.argv[2];
 if (!["migrate", "test"].includes(mode) || !process.env.DATABASE_ADMIN_URL)
@@ -48,6 +49,7 @@ try {
       // SQL 변경과 적용 기록을 한 트랜잭션으로 묶는다.
       const body = sql.replace(/^begin;\s*$/gim, "").replace(/^commit;\s*$/gim, "");
       await client.query("BEGIN");
+      if (name === "0017_enforce_read_auth.sql") await ensureMigrationRole(client);
       await client.query(body);
       await client.query("INSERT INTO hub_meta.migrations VALUES($1,$2)", [name, hash]);
       await client.query("COMMIT");
