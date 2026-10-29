@@ -30,13 +30,13 @@ const html =
 console.log("자체 포함 목업 HTML 생성 완료");
 
 const mint = html
-  .replace('data-theme="light"', 'data-theme="light" data-visual="mint"')
+  .replace('data-theme="light"', 'data-theme="light" data-visual="reference"')
   .replace(
     "</style>",
     "\n" +
       (await read("mint-reference.css")) +
       "\n" +
-      (await read("layout.css")) +
+      (await read("layout.css")) + "\n" + (await read("reference-portal.css")) +
       "</style>",
   );
 await writeFile(resolve(folder, "index-mint.html"), mint);

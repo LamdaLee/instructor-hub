@@ -49,6 +49,11 @@ try {
   await open();
   assert.equal(await page.locator(".track-card").count(), 7);
   await noOverflow();
+  assert.equal(await page.locator(".mosaic-column").count(), 3);
+  assert.equal(await page.locator(".course-artboard svg").count(), 5);
+  assert.equal(await page.locator(".notice-rail, .dashboard-layout").count(), 0);
+  const tops = await page.locator(".mosaic-column > :first-child").evaluateAll(els => els.map(el => el.getBoundingClientRect().top));
+  assert.ok(tops[0] > tops[1] && tops[2] > tops[0], "엇갈린 3열 카드 배치");
   assert.equal(await page.locator(".overview-strip").count(), 0);
   assert.equal(await page.locator(".notice-card").count(), 3);
   assert.ok(
@@ -65,7 +70,7 @@ try {
   );
   assert.equal(await page.locator("aside.sidebar").count(), 0);
   assert.ok(await page.locator("[data-primary-nav]").isVisible());
-  await page.getByRole("button", { name: "대구", exact: true }).click();
+  await page.getByLabel("수업 지역 선택").getByRole("button", { name: "대구", exact: true }).click();
   assert.equal(await page.locator(".track-card").count(), 2);
   await page.getByRole("button", { name: "전체 지역", exact: true }).click();
   assert.equal(await page.locator(".track-card").count(), 7);
@@ -218,7 +223,7 @@ try {
   await open();
   await noOverflow();
   assert.ok(!(await page.locator("[data-primary-nav]").isVisible()));
-  const noticeScroll = page.locator(".notice-rail .notice-grid");
+  const noticeScroll = page.locator(".portal-mobile-notices .notice-grid");
   assert.ok(await noticeScroll.evaluate((e) => e.scrollWidth > e.clientWidth));
   await noticeScroll.evaluate((e) => (e.scrollLeft = 100));
   assert.ok(await noticeScroll.evaluate((e) => e.scrollLeft > 0));
@@ -301,7 +306,7 @@ try {
     .click();
   assert.deepEqual(errors, [], "브라우저 스크립트 오류 없음");
   console.log(
-    "목업 검증 통과: 상단 메뉴·좌우 영역 재배치·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
+    "목업 검증 통과: 중앙형 포털·엇갈린 3열 컬러 카드·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·자료실 안내. Lucian 039/070/273 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
   );
 } finally {
   await browser.close();
