@@ -146,17 +146,27 @@ export function AnnouncementEditor({
     </Modal>
   );
 }
+const MATERIAL_ORGS = [
+  ["CLIPS", "클립스"], ["aSSIST", "어시스트"], ["LGE", "LG전자"], ["LAB4DX", "랩포디엑스"],
+];
 export function Materials({
   options,
   admin,
+  operator,
   query,
   onTeacher,
 }: {
   options: Row;
   admin: boolean;
+  operator: { role: string; organization?: string | null } | null;
   query: string;
   onTeacher: (id: string) => void;
 }) {
+  const ownOrg = operator?.organization || "";
+  const canSeeAll = admin || ["LGE", "LAB4DX"].includes(ownOrg);
+  const allowedOrgs = MATERIAL_ORGS.filter(([org]) => canSeeAll || org === ownOrg);
+  const [organization, setOrganization] = useState(canSeeAll ? "" : ownOrg);
+  const [formOrg, setFormOrg] = useState(ownOrg);
   const [rows, setRows] = useState<Row[]>([]),
     [editing, setEditing] = useState<Row | null>(),
     [deleting, setDeleting] = useState<Row>(),
@@ -170,7 +180,8 @@ export function Materials({
   }, [query]);
   useEffect(() => {
     let active = true;
-    api("materials", { q: search })
+    setRows([]); setLoaded(false); setError("");
+    api("materials", { q: search, organization })
       .then((r) => {
         if (active) {
           setRows(r.rows);
@@ -183,10 +194,16 @@ export function Materials({
     return () => {
       active = false;
     };
-  }, [revision, search]);
+  }, [revision, search, organization]);
   const refresh = () => setRevision((n) => n + 1);
   return (
     <>
+      <div className="material-org-tabs" role="tablist" aria-label="교재 기관">
+        {(canSeeAll ? [["", "전체"], ...allowedOrgs] : allowedOrgs).map(([org, label]) =>
+          <button key={org} role="tab" aria-selected={organization === org}
+            aria-controls="material-panel" id={`material-tab-${org || "all"}`}
+            onClick={() => setOrganization(org)}>{label}</button>)}
+      </div>
       <div className="toolbar">
         <label>
           자료 검색
@@ -200,6 +217,7 @@ export function Materials({
         <button
           onClick={() => {
             setError("");
+            setFormOrg(organization || ownOrg);
             setEditing(null);
           }}
         >
@@ -207,20 +225,21 @@ export function Materials({
         </button>
       </div>
       <p className="privacy-info">
-        로그인한 사용자는 누구나 PDF·PPTX 교재를 올리고 수정·삭제할 수 있습니다. 파일당 최대 50
-        MB.
+        {canSeeAll ? "기관별 탭에서 교재를 확인할 수 있습니다." : "자기 기관의 교재만 조회·업로드·수정·삭제할 수 있습니다."} PDF·PPTX 파일당 최대 50 MB.
       </p>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      <div className="material-grid">
+      {!loaded && !error && <p role="status">교재를 불러오는 중…</p>}
+      <div id="material-panel" role="tabpanel" aria-labelledby={`material-tab-${organization || "all"}`} className="material-grid">
         {rows.map((m) => (
           <article className="material-card" key={m.id}>
             <div className="file-icon">
               {m.mime === "application/pdf" ? "PDF" : "PPTX"}
             </div>
+            <span className="org-badge">{MATERIAL_ORGS.find(([org]) => org === m.organization)?.[1] || "기관 미분류"}</span>
             <h3>{m.subject}</h3>
             <button
               className="teacher-link"
@@ -250,6 +269,7 @@ export function Materials({
                 className="secondary"
                 onClick={() => {
                   setError("");
+                  setFormOrg(m.organization || "");
                   setEditing(m);
                 }}
               >
@@ -366,6 +386,13 @@ export function Materials({
             }}
           >
             <label className="wide">
+              자료 기관
+              <select name="organization" value={formOrg} required onChange={e => setFormOrg(e.target.value)}>
+                <option value="">기관 선택</option>
+                {allowedOrgs.map(([org, label]) => <option key={org} value={org}>{label}</option>)}
+              </select>
+            </label>
+            <label className="wide">
               교과목
               <select name="subject" defaultValue={editing?.subject} required>
                 <option value="">과목 선택</option>
@@ -378,11 +405,12 @@ export function Materials({
               강사
               <select
                 name="instructor_id"
-                defaultValue={editing?.instructor_id}
+                key={formOrg}
+                defaultValue={options.instructors.some((p: Row) => p.id === editing?.instructor_id && p.organization === formOrg) ? editing?.instructor_id : ""}
                 required
               >
                 <option value="">강사 선택</option>
-                {options.instructors.map((p: Row) => (
+                {options.instructors.filter((p: Row) => p.organization === formOrg).map((p: Row) => (
                   <option key={p.id} value={p.id}>
                     {p.name} · {p.organization}
                   </option>
@@ -404,8 +432,8 @@ export function Materials({
                   name="published"
                   defaultValue={editing?.published === false ? "false" : "true"}
                 >
-                  <option value="true">공개</option>
-                  <option value="false">비공개</option>
+                  <option value="true">기관 권한에 따라 공개</option>
+                  <option value="false">관리자만 보기</option>
                 </select>
               </label>
             )}

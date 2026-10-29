@@ -52,8 +52,8 @@ async function storeMaterial(req: Request, id?: string) {
   if (!sameOrigin(req)) return fail("forbidden", 403);
   const auth = token(req);
   // 비로그인 업로드는 본문을 읽기 전에 거절한다.
-  if (!auth || !(await callApi("api_me", [auth])).ok)
-    return fail("session_expired", 401);
+  const me = auth ? await callApi("api_me", [auth]) : null;
+  if (!me?.ok) return fail("session_expired", 401);
   if (id) {
     const existing = await callApi("api_material", [auth, "file", { id }]);
     if (!existing.ok) return fail("not_found", 404);
@@ -88,7 +88,11 @@ async function storeMaterial(req: Request, id?: string) {
     instructor_id = String(data.get("instructor_id") || ""),
     uploader = String(data.get("uploader") || "").trim(),
     reason = String(data.get("reason") || "").trim(),
-    actor = String(data.get("actor") || data.get("uploader") || "").trim();
+    actor = String(data.get("actor") || data.get("uploader") || "").trim(),
+    organization = String(data.get("organization") || "").trim();
+  const operator = me.operator as { role: string; organization?: string };
+  if (organization && !["CLIPS", "aSSIST", "LGE", "LAB4DX"].includes(organization)) return fail("bad_request");
+  if (organization && operator.role !== "admin" && !["LGE", "LAB4DX"].includes(operator.organization || "") && organization !== operator.organization) return fail("forbidden", 403);
   if (
     !subject ||
     subject.length > 200 ||
@@ -106,6 +110,7 @@ async function storeMaterial(req: Request, id?: string) {
     id,
     subject,
     instructor_id,
+    ...(organization ? { organization } : {}),
     uploader,
     actor,
     reason,
@@ -155,6 +160,10 @@ async function storeMaterial(req: Request, id?: string) {
         result.code || "server_error",
         result.code === "forbidden"
           ? 403
+          : result.code === "not_found"
+            ? 404
+          : result.code === "session_expired"
+            ? 401
           : result.code === "rate_limited"
             ? 429
             : result.code === "storage_full"

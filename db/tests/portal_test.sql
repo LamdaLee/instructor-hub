@@ -1,6 +1,7 @@
 -- 로그인 필수 조회·업로드와 관리자 전용 변경의 경계를 실제 앱 역할로 검증한다.
 begin;
 insert into hub.operators(id,email,name,password_hash,role) values('00000000-0000-0000-0000-000000000081','portal-admin@example.invalid','가상 관리자','unused','admin'),('00000000-0000-0000-0000-000000000082','portal-member@example.invalid','가상 운영진','unused','member');
+update hub.operators set organization='LGE' where id='00000000-0000-0000-0000-000000000082';
 insert into hub.sessions values(decode(repeat('81',32),'hex'),'00000000-0000-0000-0000-000000000081',now()+interval '1 hour'),(decode(repeat('82',32),'hex'),'00000000-0000-0000-0000-000000000082',now()+interval '1 hour');
 insert into hub.subjects(name) values('공개자료 검증 과목');
 insert into hub.instructors(id,name,organization,phone) values('00000000-0000-0000-0000-000000000083','가상 자료 강사','LGE','TEST-CONTACT');

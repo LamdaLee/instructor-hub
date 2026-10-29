@@ -122,6 +122,7 @@ test("로그인 필수 포털·기간 시간표·강사 모달·교재 업로드
   await expect(page.getByRole("button", { name: "파일 수정" })).toHaveCount(0);
   await page.getByRole("button", { name: "교재 업로드", exact: true }).click();
   let dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: "자료 기관", exact: true }).selectOption("LGE");
   await dialog
     .getByRole("combobox", { name: "교과목", exact: true })
     .selectOption("E2E 과목");

@@ -58,7 +58,7 @@ export default function Hub({
   operator,
   adminMode = false,
 }: {
-  operator: { name: string; role: string; review_requests?: boolean; review_signups?: boolean } | null;
+  operator: { name: string; role: string; review_requests?: boolean; review_signups?: boolean; organization?: string | null } | null;
   adminMode?: boolean;
 }) {
   const params = useSearchParams(),
@@ -903,7 +903,8 @@ export default function Hub({
         {view === "materials" && options && (
           <Materials
             options={options}
-            admin={!!isAdmin}
+            admin={operator?.role === "admin"}
+            operator={operator}
             query={filter.q}
             onTeacher={setTeacher}
           />

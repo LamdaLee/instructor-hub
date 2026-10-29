@@ -1219,3 +1219,11 @@ header.portal-header { flex-wrap: wrap; }
 .venue-list { display: grid; gap: 12px; margin: 20px 0; }
 .venue-list strong { overflow-wrap: anywhere; }
 .venue-list .toolbar, .class-settings td .toolbar { margin: 12px 0 0; }
+
+.material-org-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.material-org-tabs button { background: #f1f5f3; color: #52685e; border: 1px solid var(--line); min-height: 42px; }
+.material-org-tabs button[aria-selected="true"] { background: #168577; color: white; border-color: #168577; }
+@media (max-width: 700px) {
+  .material-org-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+  .material-org-tabs button { font-size: 13px; padding: 10px 8px; }
+}
