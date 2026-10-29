@@ -1,4 +1,5 @@
 "use client";
+import MaterialUploadDialog from "./material-upload-dialog";
 import { readResponse } from "@/lib/client";
 import { useEffect, useState } from "react";
 import { api, post, messages, type Row } from "@/lib/client";
@@ -233,60 +234,23 @@ export function Materials({
         </p>
       )}
       {!loaded && !error && <p role="status">교재를 불러오는 중…</p>}
-      <div id="material-panel" role="tabpanel" aria-labelledby={`material-tab-${organization || "all"}`} className="material-grid">
-        {rows.map((m) => (
-          <article className="material-card" key={m.id}>
-            <div className="file-icon">
-              {m.mime === "application/pdf" ? "PDF" : "PPTX"}
-            </div>
-            <span className="org-badge">{MATERIAL_ORGS.find(([org]) => org === m.organization)?.[1] || "기관 미분류"}</span>
-            <h3>{m.subject}</h3>
-            <button
-              className="teacher-link"
-              onClick={() => onTeacher(m.instructor_id)}
-            >
-              {options.instructors.find((p: Row) => p.id === m.instructor_id)
-                ?.name || "강사 정보"}
-            </button>
-            <p className="file-name">{m.filename}</p>
-            <small>
-              {(Number(m.bytes) / 1024 / 1024).toFixed(2)} MB ·{" "}
-              {new Date(m.updated_at).toLocaleDateString("ko-KR", {
-                timeZone: "Asia/Seoul",
-              })}
-            </small>
-            <p className="muted">
-              등록자 {m.uploader} {m.published ? "" : "· 비공개"}
-            </p>
-            <a
-              className="secondary file-download"
-              href={"/api/materials/" + m.id}
-            >
-              교재 내려받기
-            </a>
-            <div className="material-actions">
-              <button
-                className="secondary"
-                onClick={() => {
-                  setError("");
-                  setFormOrg(m.organization || "");
-                  setEditing(m);
-                }}
-              >
-                파일 수정
-              </button>
-              <button
-                className="secondary danger"
-                onClick={() => {
-                  setError("");
-                  setDeleting(m);
-                }}
-              >
-                삭제
-              </button>
-            </div>
-          </article>
-        ))}
+      <div id="material-panel" role="tabpanel" aria-labelledby={`material-tab-${organization || "all"}`}>
+        <div className="table-wrap material-table"><table>
+          <caption className="sr-only">날짜·트랙·지역·과목·강사·파일 이름 순서의 교재 목록</caption>
+          <thead><tr>{["날짜", "트랙", "지역", "과목", "강사", "파일 이름", "관리"].map(title => <th key={title} scope="col">{title}</th>)}</tr></thead>
+          <tbody>{rows.map(m => <tr className="material-row" key={m.id}>
+            <td data-label="날짜">{m.lesson_day || "수업 미연결"}{m.lesson_cohort && <small>{m.lesson_cohort}기 · {m.lesson_class_name}</small>}</td>
+            <td data-label="트랙">{m.lesson_track || "—"}</td>
+            <td data-label="지역">{m.lesson_region || "—"}</td>
+            <td data-label="과목">{m.lesson_subject || m.subject}<small>{MATERIAL_ORGS.find(([org]) => org === m.organization)?.[1] || "기관 미분류"}</small></td>
+            <td data-label="강사"><button className="teacher-link" disabled={!options.instructors.some((p: Row) => p.id === m.instructor_id)} onClick={() => onTeacher(m.instructor_id)}>{m.lesson_instructor || options.instructors.find((p: Row) => p.id === m.instructor_id)?.name || "강사 정보"}</button></td>
+            <td data-label="파일 이름"><a className="file-name" href={"/api/materials/" + m.id} aria-label={`교재 내려받기: ${m.filename}`}>{m.filename}</a><small>{(Number(m.bytes) / 1024 / 1024).toFixed(2)} MB · 등록자 {m.uploader}{m.published ? "" : " · 관리자만 보기"}</small></td>
+            <td data-label="관리"><div className="material-actions">
+              <button className="secondary" onClick={() => { setError(""); setFormOrg(m.organization || ""); setEditing(m); }}>파일 수정</button>
+              <button className="secondary danger" onClick={() => { setError(""); setDeleting(m); }}>삭제</button>
+            </div></td>
+          </tr>)}</tbody>
+        </table></div>
       </div>
       {loaded && !rows.length && (
         <p className="empty">등록된 자료가 없습니다.</p>
@@ -353,117 +317,9 @@ export function Materials({
           </form>
         </Modal>
       )}
-      {editing !== undefined && (
-        <Modal
-          title={editing ? "교재 파일 수정" : "교재 업로드"}
-          close={() => {
-            if (!busy) setEditing(undefined);
-          }}
-        >
-          <form
-            className="form-grid"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError("");
-              const data = new FormData(e.currentTarget);
-              try {
-                const file = data.get("file") as File;
-                if (file?.size > 50 * 1024 * 1024)
-                  throw new Error(messages.file_too_large);
-                const res = await fetch(
-                  "/api/materials" + (editing ? "/" + editing.id : ""),
-                  { method: "POST", body: data },
-                );
-                await readResponse(res);
-                refresh();
-                setEditing(undefined);
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label className="wide">
-              자료 기관
-              <select name="organization" value={formOrg} required onChange={e => setFormOrg(e.target.value)}>
-                <option value="">기관 선택</option>
-                {allowedOrgs.map(([org, label]) => <option key={org} value={org}>{label}</option>)}
-              </select>
-            </label>
-            <label className="wide">
-              교과목
-              <select name="subject" defaultValue={editing?.subject} required>
-                <option value="">과목 선택</option>
-                {options.subjects.map((s: Row) => (
-                  <option key={s.name}>{s.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              강사
-              <select
-                name="instructor_id"
-                key={formOrg}
-                defaultValue={options.instructors.some((p: Row) => p.id === editing?.instructor_id && p.organization === formOrg) ? editing?.instructor_id : ""}
-                required
-              >
-                <option value="">강사 선택</option>
-                {options.instructors.filter((p: Row) => p.organization === formOrg).map((p: Row) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · {p.organization}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {editing ? "작업자 이름" : "등록자 이름"}
-              <input
-                name={editing ? "actor" : "uploader"}
-                required
-                maxLength={80}
-              />
-            </label>
-            {admin && (
-              <label>
-                공개 여부
-                <select
-                  name="published"
-                  defaultValue={editing?.published === false ? "false" : "true"}
-                >
-                  <option value="true">기관 권한에 따라 공개</option>
-                  <option value="false">관리자만 보기</option>
-                </select>
-              </label>
-            )}
-            {editing && (
-              <p className="wide file-name">현재 파일: {editing.filename}</p>
-            )}
-            <label className="wide">
-              {editing ? "교체 파일 (선택)" : "PDF · PPTX 파일"}
-              <input
-                name="file"
-                type="file"
-                accept=".pdf,.pptx"
-                required={!editing}
-              />
-            </label>
-            <label className="wide">
-              변경 사유
-              <input name="reason" required maxLength={1000} />
-            </label>
-            {error && (
-              <p className="error wide" role="alert">
-                {error}
-              </p>
-            )}
-            <button disabled={busy}>
-              {busy ? "저장 중…" : editing ? "변경 저장" : "업로드"}
-            </button>
-          </form>
-        </Modal>
-      )}
+      {editing !== undefined && <MaterialUploadDialog editing={editing} options={options} admin={admin}
+        allowedOrgs={allowedOrgs} initialOrg={formOrg} done={refresh} close={() => setEditing(undefined)} />}
+
     </>
   );
 }

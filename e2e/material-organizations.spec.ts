@@ -5,7 +5,7 @@ import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 const db = new pg.Client({ connectionString: process.env.DATABASE_ADMIN_URL });
 const users = ["LGE", "LAB4DX", "CLIPS", "aSSIST"].map(org => ({ org, id: randomUUID(), raw: randomBytes(32).toString("hex") }));
-const materials = users.map(u => ({ org: u.org, id: randomUUID(), person: randomUUID(), key: randomUUID() }));
+const materials = users.map(u => ({ org: u.org, id: randomUUID(), person: randomUUID(), key: randomUUID(), classId: randomUUID(), slot: randomUUID() }));
 const labels: Record<string, string> = { CLIPS: "클립스", aSSIST: "어시스트", LGE: "LG전자", LAB4DX: "랩포디엑스" };
 const subject = "가상 기관 교재 " + randomUUID();
 const pdf = Buffer.from("%PDF-1.4 TEST MATERIAL");
@@ -21,6 +21,8 @@ test.beforeAll(async () => {
   }
   for (const m of materials) {
     await db.query("INSERT INTO hub.instructors(id,name,organization) VALUES($1,$2,$3)", [m.person, "가상 " + m.org + " 강사", m.org]);
+    await db.query("INSERT INTO hub.classes(id,region,cohort,track,name) VALUES($1,'대전',975,'MAT','가상 교재 반')", [m.classId]);
+    await db.query("INSERT INTO hub.slots(id,class_id,day,subject,instructor_id,organization,kind) VALUES($1,$2,'2099-01-06',$3,$4,$5,'수업')", [m.slot, m.classId, subject, m.person, m.org]);
     await db.query("INSERT INTO hub.materials(id,subject,instructor_id,organization,filename,disk_key,bytes,mime,uploader) VALUES($1,$2,$3,$4,$5,$6,$7,'application/pdf','가상 등록자')", [m.id, subject, m.person, m.org, `${m.org}-교재.pdf`, m.key, pdf.length]);
     await writeFile(join(directory, m.key), pdf, { flag: "wx", mode: 0o600 });
   }
@@ -30,6 +32,8 @@ test.afterAll(async () => {
   const files = (await db.query("SELECT disk_key FROM hub.materials WHERE instructor_id=ANY($1::uuid[])", [people])).rows;
   await db.query("DELETE FROM hub.audit_logs WHERE operator_id=ANY($1::uuid[])", [ids]);
   await db.query("DELETE FROM hub.materials WHERE instructor_id=ANY($1::uuid[])", [people]);
+  await db.query("DELETE FROM hub.slots WHERE id=ANY($1::uuid[])", [materials.map(m => m.slot)]);
+  await db.query("DELETE FROM hub.classes WHERE id=ANY($1::uuid[])", [materials.map(m => m.classId)]);
   await db.query("DELETE FROM hub.instructors WHERE id=ANY($1::uuid[])", [people]);
   await db.query("DELETE FROM hub.subjects WHERE name=$1", [subject]);
   await db.query("DELETE FROM hub.sessions WHERE operator_id=ANY($1::uuid[])", [ids]);
@@ -45,12 +49,12 @@ test("LG전자·랩포디엑스는 네 기관 탭과 모든 기관 파일을 조
   for (const org of ["LGE", "LAB4DX"]) {
     await login(context, org);
     await page.goto("/?view=materials");
-    await expect(page.locator(".material-card")).toHaveCount(4);
+    await expect(page.locator(".material-row")).toHaveCount(4);
     const tabs = page.getByRole("tablist", { name: "교재 기관" });
     for (const m of materials) {
       await tabs.getByRole("tab", { name: labels[m.org], exact: true }).click();
-      await expect(page.locator(".material-card")).toHaveCount(1);
-      await expect(page.locator(".material-card")).toContainText(`${m.org}-교재.pdf`);
+      await expect(page.locator(".material-row")).toHaveCount(1);
+      await expect(page.locator(".material-row")).toContainText(`${m.org}-교재.pdf`);
       expect((await page.request.get("/api/materials/" + m.id)).status()).toBe(200);
     }
   }
@@ -62,8 +66,8 @@ test("클립스·어시스트는 자기 기관만 보고 ID·기관 위조로 �
     await page.goto("/?view=materials");
     await expect(page.getByRole("tab")).toHaveCount(1);
     await expect(page.getByRole("tab", { name: labels[org], exact: true })).toBeVisible();
-    await expect(page.locator(".material-card")).toHaveCount(1);
-    await expect(page.locator(".material-card")).toContainText(`${org}-교재.pdf`);
+    await expect(page.locator(".material-row")).toHaveCount(1);
+    await expect(page.locator(".material-row")).toContainText(`${org}-교재.pdf`);
     const foreign = materials.find(m => m.org === "LGE")!;
     const list = await page.request.get("/api/read?view=materials&organization=LGE");
     expect((await list.json()).rows).toEqual([]);
@@ -73,7 +77,7 @@ test("클립스·어시스트는 자기 기관만 보고 ID·기관 위조로 �
     expect((await page.request.post("/api/materials/" + foreign.id, { headers, multipart: { subject, organization: org, instructor_id: foreign.person, actor: "가상 사용자", reason: "권한 검증" } })).status()).toBe(404);
     expect((await page.request.post("/api/materials", { headers, multipart: { subject, organization: "LGE", instructor_id: foreign.person, uploader: "가상 사용자", reason: "권한 검증", file: { name: "가상.pdf", mimeType: "application/pdf", buffer: pdf } } })).status()).toBe(403);
     const own = materials.find(m => m.org === org)!;
-    const uploaded = await page.request.post("/api/materials", { headers, multipart: { subject, organization: org, instructor_id: own.person, uploader: "가상 사용자", reason: "자기 기관 업로드 검증", file: { name: "가상.pdf", mimeType: "application/pdf", buffer: pdf } } });
+    const uploaded = await page.request.post("/api/materials", { headers, multipart: { subject, slot_id: own.slot, organization: org, instructor_id: own.person, uploader: "가상 사용자", reason: "자기 기관 업로드 검증", file: { name: "가상.pdf", mimeType: "application/pdf", buffer: pdf } } });
     expect(uploaded.status()).toBe(200);
     const id = (await uploaded.json()).id;
     expect((await page.request.get("/api/materials/" + id)).status()).toBe(200);

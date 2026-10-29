@@ -182,6 +182,7 @@ async function handle(
           "audit",
           "announcements",
           "materials",
+          "material_lessons",
         ].includes(view)
       )
         return response({ ok: false, code: "bad_request" });

@@ -89,7 +89,9 @@ async function storeMaterial(req: Request, id?: string) {
     uploader = String(data.get("uploader") || "").trim(),
     reason = String(data.get("reason") || "").trim(),
     actor = String(data.get("actor") || data.get("uploader") || "").trim(),
-    organization = String(data.get("organization") || "").trim();
+    organization = String(data.get("organization") || "").trim(),
+    slotId = String(data.get("slot_id") || "").trim();
+  if (slotId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slotId)) return fail("bad_request");
   const operator = me.operator as { role: string; organization?: string };
   if (organization && !["CLIPS", "aSSIST", "LGE", "LAB4DX"].includes(organization)) return fail("bad_request");
   if (organization && operator.role !== "admin" && !["LGE", "LAB4DX"].includes(operator.organization || "") && organization !== operator.organization) return fail("forbidden", 403);
@@ -111,6 +113,7 @@ async function storeMaterial(req: Request, id?: string) {
     subject,
     instructor_id,
     ...(organization ? { organization } : {}),
+    ...(slotId ? { slot_id: slotId } : {}),
     uploader,
     actor,
     reason,

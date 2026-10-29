@@ -5,6 +5,8 @@ update hub.operators set organization='LGE' where id='00000000-0000-0000-0000-00
 insert into hub.sessions values(decode(repeat('81',32),'hex'),'00000000-0000-0000-0000-000000000081',now()+interval '1 hour'),(decode(repeat('82',32),'hex'),'00000000-0000-0000-0000-000000000082',now()+interval '1 hour');
 insert into hub.subjects(name) values('공개자료 검증 과목');
 insert into hub.instructors(id,name,organization,phone) values('00000000-0000-0000-0000-000000000083','가상 자료 강사','LGE','TEST-CONTACT');
+insert into hub.classes(id,region,cohort,track,name) values('00000000-0000-0000-0000-000000000086','대전',95,'TEST','가상 교재 반');
+insert into hub.slots(id,class_id,day,subject,instructor_id,organization,kind) values('00000000-0000-0000-0000-000000000087','00000000-0000-0000-0000-000000000086','2099-01-06','공개자료 검증 과목','00000000-0000-0000-0000-000000000083','LGE','수업');
 set local role hub_app;
 do $$ declare a bytea:=decode(repeat('81',32),'hex');m bytea:=decode(repeat('82',32),'hex');r jsonb;v uuid;payload jsonb;begin
  assert hub.api_read(null,'options','{}')->>'code'='session_expired','비로그인 필터 차단';
@@ -24,7 +26,7 @@ do $$ declare a bytea:=decode(repeat('81',32),'hex');m bytea:=decode(repeat('82'
  assert exists(select 1 from jsonb_array_elements(hub.api_read(m,'announcements','{"region":"대전"}')->'rows') x where x->>'id'=v::text),'지역 공지 조회';
  assert not exists(select 1 from jsonb_array_elements(hub.api_read(m,'announcements','{"region":"부산"}')->'rows') x where x->>'id'=v::text),'다른 지역 공지 제외';
  perform hub.api_save(a,'announcement',jsonb_build_object('id',v,'delete',true));
- payload:='{"subject":"공개자료 검증 과목","instructor_id":"00000000-0000-0000-0000-000000000083","filename":"test.pdf","disk_key":"00000000-0000-0000-0000-000000000084","bytes":10,"mime":"application/pdf","uploader":"가상 등록자","reason":"검증","ip":"portal-test"}';
+ payload:='{"slot_id":"00000000-0000-0000-0000-000000000087","subject":"공개자료 검증 과목","instructor_id":"00000000-0000-0000-0000-000000000083","filename":"test.pdf","disk_key":"00000000-0000-0000-0000-000000000084","bytes":10,"mime":"application/pdf","uploader":"가상 등록자","reason":"검증","ip":"portal-test"}';
  assert hub.api_material(null,'upload',payload)->>'code'='session_expired','비로그인 업로드 차단';
  r:=hub.api_material(m,'upload',payload);assert (r->>'ok')::boolean,'로그인 업로드';v:=(r->>'id')::uuid;
  assert hub.api_material(null,'file',jsonb_build_object('id',v))->>'code'='session_expired','비로그인 다운로드 차단';

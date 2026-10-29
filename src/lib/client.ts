@@ -1,6 +1,8 @@
 export type Row = Record<string, any>;
 export const messages: Record<string, string> = {
   venue_overlap: "이 반에 이미 등록된 강의장 예외 기간과 겹칩니다. 기간을 확인하세요.",
+  lesson_required: "날짜·지역·트랙을 선택하고 연결할 수업을 골라주세요.",
+  lesson_unavailable: "연결할 수업을 찾을 수 없거나 접근 권한이 없습니다. 시간표를 다시 선택하세요.",
   invalid_credentials: "이메일 또는 비밀번호를 확인하세요.",
   rate_limited: "요청이 많습니다. 15분 뒤 다시 시도하세요.",
   session_expired: "로그인이 만료되었습니다.",
