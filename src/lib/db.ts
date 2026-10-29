@@ -27,9 +27,12 @@ export async function callApi(
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 30000,
   }));
-  const { rows } = await pool.query<{ result: Result }>(
-    `select hub.${name}(${args.map((_, i) => `$${i + 1}`).join(",")}) result`,
-    args,
-  );
+  const invocation = `hub.${name}(${args.map((_, i) => `$${i + 1}`).join(",")})`;
+  // DB의 과거 함수 정의에 의존하지 않고 같은 왕복 안에서 먼저 세션을 확인한다.
+  const protectedCall = ["api_read", "api_save", "api_material", "api_org", "api_password"].includes(name);
+  const query = protectedCall
+    ? `select case when coalesce((hub.api_me($1)->>'ok')::boolean,false) then ${invocation} else '{"ok":false,"code":"session_expired"}'::jsonb end result`
+    : `select ${invocation} result`;
+  const { rows } = await pool.query<{ result: Result }>(query, args);
   return rows[0].result;
 }

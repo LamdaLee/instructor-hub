@@ -102,3 +102,20 @@ test("만료된 기관 화면은 포커스를 되찾으면 재로그인으로 �
   await expect(page).toHaveURL(/\/admin\/login\?expired=1&next=%2Forg/);
   await expect(page.getByLabel("이메일", { exact: true })).toBeVisible();
 });
+
+test("DB 최종 함수가 과거 공개 정의로 바뀌어도 HTTP는 비로그인 요청을 거절", async ({ request }) => {
+  const definition = (await db.query("SELECT pg_get_functiondef('hub.api_read(bytea,text,jsonb)'::regprocedure) AS definition")).rows[0].definition;
+  try {
+    await db.query(`CREATE OR REPLACE FUNCTION hub.api_read(p_token bytea,p_view text,p_filter jsonb DEFAULT '{}') RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=hub,pg_temp AS $$ SELECT '{"ok":true,"rows":[]}'::jsonb $$`);
+    expect((await db.query("SELECT hub.api_read(null,'options','{}') AS result")).rows[0].result.ok).toBe(true);
+    for (const view of ["options", "dashboard", "materials"]) {
+      const anonymous = await request.get(`/api/read?view=${view}`);
+      expect(anonymous.status()).toBe(401);
+      expect(await anonymous.json()).toEqual({ ok: false, code: "session_expired" });
+      const invalid = await request.get(`/api/read?view=${view}`, { headers: { Cookie: `hub_session=${"ff".repeat(32)}` } });
+      expect(invalid.status()).toBe(401);
+    }
+  } finally {
+    await db.query(definition);
+  }
+});
