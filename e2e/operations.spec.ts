@@ -228,3 +228,21 @@ test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", as
     await db.query("delete from hub.subjects where name=$1", [subject]);
   }
 });
+
+test("관리자 강사 목록 삭제 버튼은 기록을 보존하며 명단에서 제외", async ({ page, context }) => {
+  const before = await db.query("select count(*)::int as lessons from hub.slots where instructor_id=$1", [person]);
+  await login(context, "LGE");
+  await page.goto("/?view=instructors&q=가상 운영 강사");
+  await expect(page.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);
+  await login(context, "admin");
+  await page.goto("/?view=instructors&q=가상 운영 강사");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page.getByRole("button", { name: "삭제", exact: true })).toHaveCount(1);
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);
+  await expect.poll(async () => (await db.query("select archived_at is not null as archived from hub.instructors where id=$1", [person])).rows[0].archived).toBe(true);
+  const result = await db.query("select archived_at is not null as archived,(select count(*)::int from hub.slots where instructor_id=$1) as lessons from hub.instructors where id=$1", [person]);
+  expect(result.rows[0]).toEqual({ archived: true, lessons: before.rows[0].lessons });
+});

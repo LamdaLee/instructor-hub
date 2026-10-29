@@ -135,7 +135,22 @@ export default function Hub({
     }
     router.replace((adminMode ? "/admin" : "/") + "?" + p);
   };
+  const [removingInstructor, setRemovingInstructor] = useState("");
   const refresh = () => setRevision((n) => n + 1);
+  const removeInstructor = async (person: Row) => {
+    if (!confirm(`${person.name} 강사를 목록에서 삭제할까요? 기존 시간표·교재·변경 기록은 보존됩니다.`)) return;
+    setRemovingInstructor(person.id);
+    setError("");
+    try {
+      const data = await api("instructor", { id: person.id });
+      await post("save", { kind: "instructor", data: { ...data.instructor, archived_at: new Date().toISOString() } });
+      refresh();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setRemovingInstructor("");
+    }
+  };
   useEffect(() => {
     setFrom(isDate(params.get("from")) ? params.get("from")! : monday(today()));
     setTo(
@@ -918,9 +933,9 @@ export default function Hub({
               ["total_days", "총 수업일수", p => `${p.total_days || 0}일`],
               ["last_day", "최근 수업일"],
               ["next_day", "다음 수업일"],
-              ["actions", "관리", p => <div className="inline"><button className="secondary" onClick={() => setTeacher(p.id)}>상세 정보</button>{canEditInstructors && <button className="secondary" onClick={async () => {
+              ["actions", "관리", p => <div className="inline"><button className="secondary" onClick={() => setTeacher(p.id)}>상세 정보</button>{canEditInstructors && <><button className="secondary" onClick={async () => {
                 try { const d = await api("instructor", { id: p.id }); setEditor({ kind: "instructor", row: d.instructor }); } catch (e) { setError((e as Error).message); }
-              }}>정보 수정</button>}</div>],
+              }}>정보 수정</button><button type="button" className="secondary instructor-delete" disabled={!!removingInstructor} onClick={() => removeInstructor(p)}>{removingInstructor === p.id ? "삭제 중…" : "삭제"}</button></>}</div>],
             ]} />
           </>
         )}

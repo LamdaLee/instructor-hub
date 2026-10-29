@@ -1321,3 +1321,5 @@ header.portal-header {
 .schedule-table .track-row small { display: block; margin-top: 8px; line-height: 1.6; }
 .schedule-mobile details + details { margin-top: 16px; border-top: 3px solid #b7d2c5; }
 .schedule-mobile article + article { border-top: 2px solid #c6ded2; padding-top: 16px; margin-top: 16px; }
+.instructor-delete { color: #a04444; border-color: #e8c9c9; }
+.instructor-delete:hover { background: #fff1f1; }
