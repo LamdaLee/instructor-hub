@@ -18,7 +18,8 @@
     "admin": "node --env-file-if-exists=.env scripts/admin.mjs",
     "test:http": "node --env-file-if-exists=.env scripts/smoke.mjs",
     "test:e2e": "node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
-    "import-workbook": "node --env-file-if-exists=.env scripts/import-workbook.mjs"
+    "import-workbook": "node --env-file-if-exists=.env scripts/import-workbook.mjs",
+    "import-reconciled": "node --env-file-if-exists=.env scripts/import-reconciled.mjs"
   },
   "dependencies": {
     "exceljs": "4.4.0",

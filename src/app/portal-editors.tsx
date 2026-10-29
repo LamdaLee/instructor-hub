@@ -158,6 +158,7 @@ export function Materials({
 }) {
   const [rows, setRows] = useState<Row[]>([]),
     [editing, setEditing] = useState<Row | null>(),
+    [deleting, setDeleting] = useState<Row>(),
     [error, setError] = useState(""),
     [revision, setRevision] = useState(0),
     [search, setSearch] = useState(query),
@@ -205,8 +206,8 @@ export function Materials({
         </button>
       </div>
       <p className="privacy-info">
-        누구나 PDF·PPTX 교재를 올릴 수 있습니다. 파일 수정·삭제는 관리자
-        전용입니다. 파일당 최대 50 MB.
+        누구나 PDF·PPTX 교재를 올리고 수정·삭제할 수 있습니다. 파일당 최대 50
+        MB.
       </p>
       {error && (
         <p role="alert" className="error">
@@ -243,50 +244,95 @@ export function Materials({
             >
               교재 내려받기
             </a>
-            {admin && (
-              <div className="material-actions">
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    setError("");
-                    setEditing(m);
-                  }}
-                >
-                  파일 수정
-                </button>
-                <button
-                  className="secondary danger"
-                  onClick={async () => {
-                    if (
-                      !confirm(
-                        "자료를 삭제할까요? 변경 기록과 파일은 보존됩니다.",
-                      )
-                    )
-                      return;
-                    try {
-                      const r = await fetch("/api/materials/" + m.id, {
-                        method: "DELETE",
-                      });
-                      const d = await r.json();
-                      if (!d.ok)
-                        throw new Error(
-                          messages[d.code] || messages.server_error,
-                        );
-                      refresh();
-                    } catch (e) {
-                      setError((e as Error).message);
-                    }
-                  }}
-                >
-                  삭제
-                </button>
-              </div>
-            )}
+            <div className="material-actions">
+              <button
+                className="secondary"
+                onClick={() => {
+                  setError("");
+                  setEditing(m);
+                }}
+              >
+                파일 수정
+              </button>
+              <button
+                className="secondary danger"
+                onClick={() => {
+                  setError("");
+                  setDeleting(m);
+                }}
+              >
+                삭제
+              </button>
+            </div>
           </article>
         ))}
       </div>
       {loaded && !rows.length && (
         <p className="empty">등록된 자료가 없습니다.</p>
+      )}
+      {deleting && (
+        <Modal
+          title="교재 삭제"
+          close={() => {
+            if (!busy) setDeleting(undefined);
+          }}
+        >
+          <form
+            className="form-grid"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              setError("");
+              const d = new FormData(e.currentTarget);
+              try {
+                const res = await fetch("/api/materials/" + deleting.id, {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    actor: d.get("actor"),
+                    reason: d.get("reason"),
+                  }),
+                });
+                const r = await res.json();
+                if (!r.ok)
+                  throw new Error(messages[r.code] || messages.server_error);
+                refresh();
+                setDeleting(undefined);
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <p className="wide file-name">{deleting.filename}</p>
+            <p className="wide">
+              이 자료를 삭제할까요? 삭제 후 자료실과 다운로드에서 제외되며 변경
+              기록은 남습니다.
+            </p>
+            <label>
+              작업자 이름
+              <input name="actor" required maxLength={80} />
+            </label>
+            <label>
+              삭제 사유
+              <input name="reason" required maxLength={1000} />
+            </label>
+            {error && (
+              <p role="alert" className="error wide">
+                {error}
+              </p>
+            )}
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => setDeleting(undefined)}
+            >
+              취소
+            </button>
+            <button disabled={busy}>{busy ? "처리 중…" : "삭제 확인"}</button>
+          </form>
+        </Modal>
       )}
       {editing !== undefined && (
         <Modal
@@ -347,12 +393,11 @@ export function Materials({
               </select>
             </label>
             <label>
-              등록자 이름
+              {editing ? "작업자 이름" : "등록자 이름"}
               <input
-                name="uploader"
+                name={editing ? "actor" : "uploader"}
                 required
                 maxLength={80}
-                defaultValue={editing?.uploader || ""}
               />
             </label>
             {admin && (

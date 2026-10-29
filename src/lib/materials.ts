@@ -52,9 +52,8 @@ async function storeMaterial(req: Request, id?: string) {
   if (!sameOrigin(req)) return fail("forbidden", 403);
   const auth = token(req);
   if (id) {
-    const me = await callApi("api_me", [auth]);
-    if (!me.ok || (me.operator as { role: string })?.role !== "admin")
-      return fail("forbidden", 403);
+    const existing = await callApi("api_material", [auth, "file", { id }]);
+    if (!existing.ok) return fail("not_found", 404);
   }
   // Content-Length 외에 읽는 중에도 요청 크기를 제한한다.
   if (Number(req.headers.get("content-length")) > MAX_FILE + 128 * 1024)
@@ -85,11 +84,14 @@ async function storeMaterial(req: Request, id?: string) {
   const subject = String(data.get("subject") || "").trim(),
     instructor_id = String(data.get("instructor_id") || ""),
     uploader = String(data.get("uploader") || "").trim(),
-    reason = String(data.get("reason") || "").trim();
+    reason = String(data.get("reason") || "").trim(),
+    actor = String(data.get("actor") || data.get("uploader") || "").trim();
   if (
     !subject ||
     subject.length > 200 ||
     !instructor_id.match(/^[0-9a-f-]{36}$/i) ||
+    !actor ||
+    actor.length > 80 ||
     !reason ||
     reason.length > 1000 ||
     (!id && (!uploader || uploader.length > 80))
@@ -102,6 +104,7 @@ async function storeMaterial(req: Request, id?: string) {
     subject,
     instructor_id,
     uploader,
+    actor,
     reason,
     published: data.get("published") !== "false",
     ip: req.headers.get("x-real-ip") || "unknown",

@@ -55,6 +55,7 @@ test.afterAll(async () => {
 test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리자 변경", async ({
   page,
   request,
+  browser,
 }) => {
   test.setTimeout(90000);
   const errors: string[] = [];
@@ -129,6 +130,19 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   const wait = page.waitForEvent("download");
   await card.getByRole("link", { name: "교재 내려받기" }).click();
   expect((await wait).suggestedFilename()).toBe("E2E-교재.pdf");
+  await card.getByRole("button", { name: "파일 수정", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("작업자 이름").fill("가상 공개 수정자");
+  await dialog
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "E2E-교재.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 public edit"),
+    });
+  await dialog.getByLabel("변경 사유").fill("비로그인 교재 교체");
+  await dialog.getByRole("button", { name: "변경 저장", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   const material = (
     await db.query(
       "select id from hub.materials where filename='E2E-교재.pdf' and instructor_id=$1",
@@ -141,7 +155,7 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
         headers: { Origin: origin },
       })
     ).status(),
-  ).toBe(403);
+  ).toBe(400);
   await page.goto("/admin");
   await expect(page).toHaveURL(/admin\/login/);
   await page.getByLabel("이메일", { exact: true }).fill(email);
@@ -194,19 +208,28 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4 updated"),
   });
+  await dialog.getByLabel("작업자 이름").fill("가상 관리자");
   await dialog.getByLabel("변경 사유").fill("파일 교체");
   await dialog.getByRole("button", { name: "변경 저장" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".material-grid")).toContainText("E2E-수정.pdf");
-  page.once("dialog", (d) => d.accept());
-  await page
+  const publicPage = await browser.newPage();
+  await publicPage.goto(origin + "/?view=materials");
+  await publicPage
     .locator(".material-card")
     .filter({ hasText: "E2E-수정.pdf" })
     .getByRole("button", { name: "삭제", exact: true })
     .click();
-  await expect(page.locator(".material-grid")).not.toContainText(
+  const deletion = publicPage.getByRole("dialog");
+  await deletion.getByLabel("작업자 이름").fill("가상 공개 삭제자");
+  await deletion.getByLabel("삭제 사유").fill("비로그인 삭제 검증");
+  await deletion
+    .getByRole("button", { name: "삭제 확인", exact: true })
+    .click();
+  await expect(publicPage.locator(".material-grid")).not.toContainText(
     "E2E-수정.pdf",
   );
+  await publicPage.close();
   await page.goto("/admin?view=announcements");
   await page.getByRole("button", { name: "공지 등록" }).click();
   dialog = page.getByRole("dialog");

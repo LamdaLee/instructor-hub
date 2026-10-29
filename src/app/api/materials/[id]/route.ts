@@ -24,8 +24,33 @@ export async function DELETE(req: Request, ctx: Context) {
   if (!sameOrigin(req)) return fail("forbidden", 403);
   const { id } = await ctx.params;
   if (!isUuid(id)) return fail("bad_request");
-  const r = await callApi("api_material", [token(req), "delete", { id }]);
+  let data;
+  try {
+    data = await req.json();
+  } catch {
+    return fail("bad_request");
+  }
+  if (
+    typeof data.actor !== "string" ||
+    !data.actor.trim() ||
+    data.actor.length > 80 ||
+    typeof data.reason !== "string" ||
+    !data.reason.trim() ||
+    data.reason.length > 1000
+  )
+    return fail("bad_request");
+  const r = await callApi("api_material", [
+    token(req),
+    "delete",
+    { id, actor: data.actor.trim(), reason: data.reason.trim() },
+  ]);
   return Response.json(r, {
-    status: r.ok ? 200 : r.code === "not_found" ? 404 : 403,
+    status: r.ok
+      ? 200
+      : r.code === "not_found"
+        ? 404
+        : r.code === "bad_request"
+          ? 400
+          : 403,
   });
 }
