@@ -1,0 +1,337 @@
+import { chromium } from "@playwright/test";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
+import { readFile, mkdir } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+const folder = dirname(fileURLToPath(import.meta.url));
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
+  args: ["--no-sandbox"],
+});
+const page = await browser.newPage({
+  viewport: { width: 1560, height: 1120 },
+  deviceScaleFactor: 1,
+  locale: "ko-KR",
+  timezoneId: "Asia/Seoul",
+});
+const errors = [];
+page.on("pageerror", (error) => errors.push(error.message));
+const mint = process.argv.includes("--mint");
+const content = await readFile(resolve(folder, mint ? 'index-mint.html' : 'index.html'));
+const captureFolder = mint ? resolve(folder,'screenshots/mint') : resolve(folder,'screenshots');
+await mkdir(captureFolder, { recursive: true });
+const server = createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(content);
+});
+await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+const url = "http://127.0.0.1:" + server.address().port;
+async function open() {
+  await page.goto(url);
+  await page.waitForSelector(".track-card");
+}
+async function screenshot(name, fullPage = true) {
+  await page.screenshot({
+    path: resolve(captureFolder, name),
+    fullPage,
+  });
+}
+async function noOverflow() {
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    "페이지 가로 넘침 없음",
+  );
+}
+try {
+  await open();
+  assert.equal(await page.locator(".track-card").count(), 7);
+  await noOverflow();
+  assert.equal(await page.locator(".mosaic-column").count(), 3);
+  assert.equal(await page.locator(".course-artboard svg").count(), 5);
+  assert.equal(await page.locator(".notice-rail, .dashboard-layout").count(), 0);
+  const tops = await page.locator(".mosaic-column > :first-child").evaluateAll(els => els.map(el => el.getBoundingClientRect().top));
+  assert.ok(tops[0] > tops[1] && tops[2] > tops[0], "엇갈린 3열 카드 배치");
+  assert.equal(await page.locator(".overview-strip").count(), 0);
+  assert.equal(await page.locator(".notice-card").count(), 3);
+  assert.ok(
+    await page
+      .getByRole("heading", { name: "수업 현황", exact: true })
+      .isVisible(),
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "공지 등록", exact: true }).count(),
+    0,
+  );
+  assert.ok(
+    !(await page.locator("main").innerText()).includes("오늘, 우리 아카데미"),
+  );
+  assert.equal(await page.locator("aside.sidebar").count(), 0);
+  assert.ok(await page.locator("[data-primary-nav]").isVisible());
+  await page.getByLabel("수업 지역 선택").getByRole("button", { name: "대구", exact: true }).click();
+  assert.equal(await page.locator(".track-card").count(), 2);
+  await page.getByRole("button", { name: "전체 지역", exact: true }).click();
+  assert.equal(await page.locator(".track-card").count(), 7);
+  await screenshot("01-dashboard-desktop.png");
+  await page
+    .getByRole("button", { name: "김예시", exact: false })
+    .first()
+    .click();
+  await page.getByRole("dialog").waitFor();
+  assert.ok(
+    (await page.getByRole("dialog").innerText()).includes("010-0000-0000"),
+  );
+  await page.keyboard.press("Escape");
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.equal(await page.locator('.track-card').count(),7,"강사 모달 닫으면 대시보드 유지");
+  await page
+    .locator("[data-primary-nav]")
+    .getByRole("button", { name: "전체 시간표", exact: true })
+    .click();
+  assert.equal(await page.locator(".schedule-table tbody tr").count(), 7);
+  assert.equal(await page.locator(".schedule-table thead th").count(), 7);
+  assert.equal(await page.locator(".region-row").count(), 3);
+  const cellColors=await page.locator('.schedule-table tbody tr').first().locator('td').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
+  assert.equal(new Set(cellColors).size,1,"기관에 관계없이 중립색 셀");
+  await page.getByLabel('조회 시작일').fill('2026-11-03');
+  await page.getByLabel('조회 종료일').fill('2026-11-05');
+  await page.getByRole('button',{name:'기간 적용',exact:true}).click();
+  assert.equal(await page.locator('.schedule-table thead th').count(),5);
+  assert.ok((await page.locator('.schedule-table thead').innerText()).includes('11.03'));
+  await page.getByLabel('조회 종료일').fill('2026-11-01');
+  await page.getByRole('button',{name:'기간 적용',exact:true}).click();
+  assert.ok((await page.locator('#range-error').innerText()).includes('시작일 이후'));
+  await page.getByRole('button',{name:'예시 주간',exact:true}).click();
+  await screenshot("02-timetable-desktop.png");
+  await page
+    .getByRole("combobox", { name: "기관 필터", exact: true })
+    .selectOption("lab");
+  assert.ok(
+    (await page.locator(".filter-state").innerText()).includes("LAB4DX"),
+  );
+  await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
+  await page.locator('[data-primary-nav]').getByRole('button',{name:'교재 자료실',exact:true}).click();
+  assert.equal(await page.locator('[data-edit-material], [data-delete-material]').count(),0);
+  await page.getByRole('button',{name:'교재 업로드',exact:true}).click();
+  await page.getByLabel('등록자 이름').fill('등록자 예시');
+  await page.locator('input[type=file]').setInputFiles({name:'목업-교재.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 mockup')});
+  await page.getByLabel('변경 사유').fill('공개 업로드 동작 검증');
+  await page.getByRole('button',{name:'업로드',exact:true}).click();
+  assert.ok((await page.locator('.material-grid').innerText()).includes('목업-교재.pdf'));
+  const publicFile=page.locator('.material-card').filter({hasText:'목업-교재.pdf'});
+  const downloadPromise=page.waitForEvent('download');
+  await publicFile.getByRole('button',{name:'교재 내려받기',exact:true}).click();
+  assert.equal((await downloadPromise).suggestedFilename(),'목업-교재.pdf');
+  await page
+    .locator(".top-actions")
+    .getByRole("button", { name: "관리자 로그인", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "관리 화면 미리보기", exact: false })
+    .click();
+  await page
+    .getByRole("heading", { name: "아카데미 운영 관리", exact: true })
+    .waitFor();
+  await page.getByRole('button',{name:'자료실',exact:true}).click();
+  const managedFile=page.locator('.material-card').filter({hasText:'목업-교재.pdf'});
+  await managedFile.getByRole('button',{name:'파일 수정',exact:true}).click();
+  await page.locator('input[type=file]').setInputFiles({name:'목업-교재-v2.pptx',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation',buffer:Buffer.from('mockup')});
+  await page.getByLabel('변경 사유').fill('파일 교체 검증');
+  await page.getByRole('button',{name:'변경 저장',exact:true}).click();
+  assert.ok((await page.locator('.material-grid').innerText()).includes('목업-교재-v2.pptx'));
+  await page.locator('.material-card').filter({hasText:'목업-교재-v2.pptx'}).getByRole('button',{name:'삭제',exact:true}).click();
+  await page.getByRole('button',{name:'삭제 처리',exact:true}).click();
+  assert.equal(await page.locator('.material-card').filter({hasText:'목업-교재-v2.pptx'}).count(),0);
+  await page.getByRole('button',{name:'변경 기록',exact:true}).click();
+  assert.ok((await page.locator('main').innerText()).includes('교재 파일 수정'));
+  await page.getByRole('button',{name:'운영 개요',exact:true}).click();
+  await screenshot("03-admin-desktop.png");
+  const statusTab = page.getByRole("tab", { name: "임시", exact: true });
+  await statusTab.click();
+  assert.equal(await statusTab.getAttribute("aria-selected"), "true");
+  await page.keyboard.press("ArrowRight");
+  assert.equal(
+    await page
+      .getByRole("tab", { name: "변경예정", exact: true })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+  assert.notEqual(
+    await page
+      .locator(".u039-tabs")
+      .evaluate((e) => getComputedStyle(e).backgroundColor),
+    "rgb(255, 255, 255)",
+  );
+  await screenshot("07-admin-dark.png");
+  await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+  await page.getByRole("button", { name: "공지사항", exact: true }).click();
+  await page.getByRole("button", { name: "공지 등록", exact: true }).click();
+  let noticeDialog = page.getByRole("dialog");
+  await noticeDialog.getByLabel("제목", { exact: true }).fill("검증용 공지");
+  await noticeDialog.getByLabel("내용", { exact: true }).fill("준비사항 확인");
+  await noticeDialog
+    .getByRole("combobox", { name: "대상 지역", exact: true })
+    .selectOption("대구");
+  await noticeDialog.getByLabel("중요 공지", { exact: true }).check();
+  await noticeDialog
+    .getByRole("button", { name: "공지 저장", exact: true })
+    .click();
+  let noticeCard = page.locator(".notice-card").filter({
+    has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+  });
+  assert.ok((await noticeCard.innerText()).includes("대구"));
+  assert.ok((await noticeCard.innerText()).includes("중요"));
+  await noticeCard.getByRole("button", { name: "수정", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("내용", { exact: true })
+    .fill("변경된 준비사항");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "공지 저장", exact: true })
+    .click();
+  noticeCard = page.locator(".notice-card").filter({
+    has: page.getByRole("heading", { name: "검증용 공지", exact: true }),
+  });
+  assert.ok((await noticeCard.innerText()).includes("변경된 준비사항"));
+  await noticeCard.getByRole("button", { name: "삭제", exact: true }).click();
+  await page.getByRole("button", { name: "삭제 처리", exact: true }).click();
+  assert.equal(await page.locator(".notice-card").count(), 3);
+  await page.getByRole("button", { name: "변경 기록", exact: true }).click();
+  assert.ok((await page.locator("main").innerText()).includes("공지 등록"));
+  assert.ok((await page.locator("main").innerText()).includes("공지 수정"));
+  await page.getByRole("button", { name: "운영 개요", exact: true }).click();
+
+  await page
+    .getByRole("button", { name: "3기 · 4기 과정 추가", exact: false })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("반 이름", { exact: true }).fill("부산 4기 예시 반");
+  await dialog.getByLabel("담당 매니저", { exact: true }).fill("담당자 예시");
+  await dialog.getByLabel("강의장", { exact: true }).fill("부산 501호");
+  await dialog.getByLabel("기수", { exact: false }).fill("4");
+  await dialog.getByRole("button", { name: "과정 추가", exact: true }).click();
+  assert.ok(
+    await page.getByText("부산 4기 예시 반", { exact: false }).isVisible(),
+  );
+  await page.getByRole("button", { name: "변경 기록", exact: true }).click();
+  assert.ok((await page.locator("main").innerText()).includes("4기"));
+  await page.getByRole("button", { name: "운영 개요", exact: true }).click();
+  await page
+    .getByRole("button", { name: "강사 붙여 넣기", exact: true })
+    .click();
+  await page.getByRole("button", { name: "미리보기", exact: true }).click();
+  assert.equal(await page.locator(".preview-table tbody tr").count(), 1);
+  await page.getByRole("button", { name: "목업에 반영", exact: true }).click();
+  await page
+    .getByRole("button", { name: "시간표", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "노트북 · AI 실습 계정 준비", exact: false })
+    .first()
+    .click();
+  await page.locator("#note-edit").fill("목업 검증용 준비사항");
+  await page.getByRole("button", { name: "메모 저장", exact: true }).click();
+  assert.ok(
+    await page
+      .getByRole("button", { name: "목업 검증용 준비사항", exact: false })
+      .first()
+      .isVisible(),
+  );
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await open();
+  await noOverflow();
+  assert.ok(!(await page.locator("[data-primary-nav]").isVisible()));
+  const noticeScroll = page.locator(".portal-mobile-notices .notice-grid");
+  assert.ok(await noticeScroll.evaluate((e) => e.scrollWidth > e.clientWidth));
+  await noticeScroll.evaluate((e) => (e.scrollLeft = 100));
+  assert.ok(await noticeScroll.evaluate((e) => e.scrollLeft > 0));
+  await noticeScroll.evaluate((e) => (e.scrollLeft = 0));
+  await screenshot("04-dashboard-mobile.png", false);
+  await page
+    .locator(".bottom-nav")
+    .getByRole("button", { name: "시간표", exact: true })
+    .click();
+  assert.ok(await page.locator(".schedule-mobile").isVisible());
+  assert.ok(!(await page.locator(".schedule-shell").isVisible()));
+  await noOverflow();
+  await screenshot("05-timetable-mobile.png", false);
+  await page.getByRole("button", { name: "트랙별 보기", exact: true }).click();
+  assert.ok(
+    (await page.locator(".day-group summary").first().innerText()).includes(
+      "Digital Marketing",
+    ),
+  );
+  await page
+    .getByRole("button", { name: "김예시", exact: false })
+    .first()
+    .click();
+  await screenshot("06-teacher-mobile.png", false);
+  await page.keyboard.press("Escape");
+  await page
+    .locator(".bottom-nav")
+    .getByRole("button", { name: "자료실", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "교재 내려받기", exact: false })
+    .first()
+    .click();
+  assert.ok(
+    (await page.getByRole("dialog").innerText()).includes("실제 파일 미연결"),
+  );
+  await page.keyboard.press("Escape");
+  await noOverflow();
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open();
+  await noOverflow();
+  await page
+    .getByRole("button", { name: "김예시", exact: false })
+    .first()
+    .click();
+  await page.getByRole("dialog").waitFor();
+  assert.equal(
+    await page.getByRole("dialog").getAttribute("aria-hidden"),
+    "false",
+  );
+  await noOverflow();
+  await page.keyboard.press("j");
+  assert.ok((await page.locator(".teacher-index").innerText()).startsWith("2"));
+  await page.keyboard.press("k");
+  assert.ok((await page.locator(".teacher-index").innerText()).startsWith("1"));
+  await page.keyboard.press("Escape");
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  await page.locator(".top-actions [data-admin-login]").click();
+  await page
+    .getByRole("button", { name: "관리 화면 미리보기", exact: false })
+    .click();
+  await noOverflow();
+  await page.getByRole("tab", { name: "임시", exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole("tab", { name: "임시", exact: true })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  await page.evaluate(() =>
+    window.notifyLucian("모션 줄이기 · 저장 알림 확인"),
+  );
+  await page.locator(".u070-t").first().waitFor();
+  await noOverflow();
+  await screenshot("08-admin-mobile.png", false);
+  await page
+    .getByRole("button", { name: "알림 닫기", exact: true })
+    .first()
+    .click();
+  assert.deepEqual(errors, [], "브라우저 스크립트 오류 없음");
+  console.log(
+    "목업 검증 통과: 중앙형 포털·엇갈린 3열 컬러 카드·지역 빠른 선택·모바일 공지 스크롤· 통계판 제거·공지 등록/수정/삭제/이력·중요/지역 표시·시간표 배경/구분선·공개 조회·공개 연락처·전체 시간표·기관 필터·관리자 진입·4기 과정 추가·엑셀 미리보기·셀 메모·변경 기록·모바일 전환·공개 파일 업로드·내려받기·관리자 교체/삭제·이력·기간 조회·중립색 시간표·강사 중앙 모달. Lucian 039/070 · 밝은/어두운 테마 전환 · 375px · 키보드 · 모션 줄이기 통과. 스크린샷 8개 저장.",
+  );
+} finally {
+  await browser.close();
+  await new Promise((resolve) => server.close(resolve));
+}

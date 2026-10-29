@@ -1,0 +1,113 @@
+#!/usr/bin/env node
+import pg from "pg";
+import { writeFile } from "node:fs/promises";
+import { parseBackup, transform } from "./backup.mjs";
+const file = process.argv[2];
+const reviewAt = process.argv.indexOf("--review-file");
+if (!file || !process.env.DATABASE_ADMIN_URL) {
+  console.error(
+    "사용법: npm run import-backup -- 백업.backup.gz [--review-file /보호된/경로.json]",
+  );
+  process.exit(1);
+}
+const client = new pg.Client({
+  connectionString: process.env.DATABASE_ADMIN_URL,
+  ssl:
+    process.env.DATABASE_SSL === "true"
+      ? { rejectUnauthorized: true }
+      : undefined,
+});
+try {
+  const { tables, digest } = await parseBackup(file);
+  const data = transform(tables);
+  await client.connect();
+  await client.query("BEGIN");
+  await client.query("SELECT pg_advisory_xact_lock(8734032)");
+  const old = await client.query(
+    "SELECT counts FROM hub.import_runs WHERE digest=$1",
+    [digest],
+  );
+  if (old.rowCount) {
+    await client.query("ROLLBACK");
+    console.log("이미 가져온 백업:", JSON.stringify(old.rows[0].counts));
+  } else {
+    for (const c of data.classes)
+      await client.query(
+        `INSERT INTO hub.classes(id,region,cohort,track,name) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET region=excluded.region,cohort=excluded.cohort,track=excluded.track,name=excluded.name`,
+        [c.id, c.region, c.cohort, c.track, c.name],
+      );
+    for (const i of data.instructors)
+      await client.query(
+        `INSERT INTO hub.instructors(id,name,organization,phone,email,archived_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO UPDATE SET name=excluded.name,organization=excluded.organization,phone=excluded.phone,email=excluded.email,archived_at=excluded.archived_at`,
+        [i.id, i.name, i.organization, i.phone, i.email, i.hub_archived_at],
+      );
+    for (const s of data.slots) {
+      if (s.subject)
+        await client.query(
+          "INSERT INTO hub.subjects(name) VALUES($1) ON CONFLICT DO NOTHING",
+          [s.subject],
+        );
+      await client.query(
+        `INSERT INTO hub.slots(id,class_id,day,subject,instructor_id,instructor_name,organization,kind,place,review_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(id) DO UPDATE SET class_id=excluded.class_id,day=excluded.day,subject=excluded.subject,instructor_id=excluded.instructor_id,instructor_name=excluded.instructor_name,organization=excluded.organization,kind=excluded.kind,place=excluded.place,review_reason=excluded.review_reason`,
+        [
+          s.id,
+          s.class_id,
+          s.day,
+          s.subject,
+          s.instructor_id,
+          s.instructor_name,
+          s.organization,
+          s.kind,
+          s.place,
+          s.review_reason,
+        ],
+      );
+    }
+    for (const o of data.operators)
+      await client.query(
+        `INSERT INTO hub.operators(id,email,name,password_hash,role) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name,password_hash=excluded.password_hash,role=excluded.role`,
+        [o.id, o.email, o.name, o.password_hash, o.role],
+      );
+    for (const a of data.audit)
+      await client.query(
+        `INSERT INTO hub.audit_logs(id,actor_email,action,target_table,summary,created_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO NOTHING`,
+        [a.id, a.user_email, a.action, a.target_table, a.summary, a.created_at],
+      );
+    const counts = {
+      classes: data.classes.length,
+      instructors: data.instructors.length,
+      slots: data.slots.length,
+      operators: data.operators.length,
+      audit_logs: data.audit.length,
+      review: data.review.length,
+    };
+    await client.query(
+      "INSERT INTO hub.import_runs(digest,counts) VALUES($1,$2)",
+      [digest, counts],
+    );
+    await client.query("COMMIT");
+    console.log("가져오기 완료:", JSON.stringify(counts));
+  }
+  if (reviewAt >= 0) {
+    const path = process.argv[reviewAt + 1];
+    if (!path) throw new Error("확인 필요 목록 경로 누락");
+    await writeFile(path, JSON.stringify(data.review, null, 2) + "\n", {
+      mode: 0o600,
+      flag: "wx",
+    });
+    console.log("확인 필요 목록을 지정 파일에 저장했습니다.");
+  } else
+    console.log(
+      "확인 필요:",
+      data.review.length,
+      "건 (강사 이름·기관 원문 목록은 --review-file로 저장; 연락처 제외)",
+    );
+} catch (e) {
+  try {
+    await client.query("ROLLBACK");
+  } catch {}
+  console.error("가져오기 실패:", e.code ?? "백업 형식 또는 입력 확인 필요");
+  process.exitCode = 1;
+} finally {
+  await client.end().catch(() => {});
+}

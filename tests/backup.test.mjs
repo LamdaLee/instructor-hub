@@ -1,0 +1,57 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  copyText,
+  organization,
+  resolveInstructor,
+  parseBackup,
+} from "../scripts/backup.mjs";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { gzipSync } from "node:zlib";
+test("COPY 이스케이프와 NULL을 구분", () => {
+  assert.equal(copyText("\\N"), null);
+  assert.equal(copyText("a\\tb\\n\\\\N"), "a\tb\n\\N");
+  assert.equal(copyText("\\141\\x62"), "ab");
+});
+test("기관 표기와 공통·휴일을 정규화", () => {
+  for (const s of ["LG", "LG전자", "LGE"])
+    assert.equal(organization(s).organization, "LGE");
+  assert.equal(organization("클립스").organization, "CLIPS");
+  assert.equal(organization("휴일").kind, "휴일");
+  assert.equal(organization("-").kind, "없음");
+  assert.ok(organization("미분류").review_reason);
+});
+test("동명이인은 기관으로 판별하고 모호하면 연결하지 않음", () => {
+  const people = [
+    { id: "1", name: "예시 강사", organization: "LGE" },
+    { id: "2", name: "예시강사", organization: "CLIPS" },
+  ];
+  assert.equal(resolveInstructor("예시 강 사", "LGE", people), "1");
+  assert.equal(resolveInstructor("예시강사", null, people), null);
+  assert.equal(resolveInstructor("미등록", "LGE", people), null);
+});
+test("덤프 SQL은 실행하지 않고 허용 COPY 블록만 파싱", async () => {
+  const dir = await mkdtemp(tmpdir() + "/hub-parser-");
+  try {
+    const file = dir + "/test.gz";
+    let sql = "DROP SCHEMA public CASCADE;\n";
+    for (const name of [
+      "public.classes",
+      "public.instructors",
+      "public.timetables",
+      "public.profiles",
+      "auth.users",
+      "public.audit_logs",
+    ])
+      sql += `COPY ${name} (id, name) FROM stdin;\n1\t예시\\t이름\n\\.\n`;
+    sql += "COPY public.unrelated (secret) FROM stdin;\n비밀\n\\.\n";
+    await writeFile(file, gzipSync(sql));
+    const { tables } = await parseBackup(file);
+    assert.equal(Object.keys(tables).length, 6);
+    assert.equal(tables["public.classes"][0].name, "예시\t이름");
+    assert.equal(tables["public.unrelated"], undefined);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
