@@ -275,13 +275,14 @@ header.portal-header {
   --plate: #ffffff90;
 }
 .course-artboard {
-  height: 164px;
-  padding: 16px 17px 0;
+  height: 96px;
+  padding: 12px 17px 0;
   display: flex;
   justify-content: center;
 }
 .course-artboard svg {
   width: 100%;
+  max-width: 140px;
   height: 100%;
 }
 .course-content {
@@ -869,7 +870,7 @@ html {
     gap: 17px;
   }
   .course-artboard {
-    height: 155px;
+    height: 96px;
   }
 }
 @media (max-width: 700px) {
@@ -969,7 +970,7 @@ html {
     display: none;
   }
   .course-artboard {
-    height: 164px;
+    height: 84px;
   }
   .course-content {
     padding: 15px 22px 23px;
