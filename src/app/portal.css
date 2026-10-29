@@ -250,55 +250,61 @@ header.portal-header {
   --course-ink: #365a45;
   --plate: #ffffff90;
 }
-.course-artboard {
-  height: 186px;
-  padding: 16px 17px 0;
-  display: flex;
-  justify-content: center;
-}
-.course-artboard svg {
-  width: 100%;
-  height: 100%;
-}
+/* 이미지 없이 반·수업 내용이 먼저 보이도록 카드 본문을 강조한다. */
 .course-content {
-  padding: 12px 22px 22px;
-  text-align: center;
+  padding: 22px 22px 22px;
+  text-align: left;
 }
 .course-location {
-  font-size: 11px;
-  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--plate);
   color: inherit;
   border: 0;
-  padding: 7px;
+  border-radius: 999px;
+  padding: 6px 12px;
 }
 .course-content h2 {
-  font-size: 23px;
+  font-size: 26px;
   line-height: 1.15;
-  margin: 8px 0 20px;
+  margin: 14px 0 18px;
   letter-spacing: -0.7px;
   color: inherit;
 }
 .course-lecture {
   border-radius: 15px;
   background: var(--plate);
-  padding: 12px 14px;
+  padding: 16px 16px;
   text-align: left;
 }
+.course-lecture > p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+.lesson-content + .lesson-content {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid currentColor;
+  border-top-color: color-mix(in srgb, currentColor 20%, transparent);
+}
 .lesson-content small {
-  font-size: 11px;
-  opacity: 0.7;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
 }
 .lesson-content h3 {
-  font-size: 15px;
-  line-height: 1.5;
-  margin: 5px 0;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 4px 0 6px;
   color: inherit;
 }
 .lesson-content p {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   margin: 4px 0 9px;
-  opacity: 0.76;
+  opacity: 0.85;
 }
 .lesson-person {
   display: flex;
@@ -366,8 +372,11 @@ header.portal-header {
 }
 .course-info b {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 5px;
+}
+.course-card .teacher-link {
+  font-size: 16px;
 }
 .course-actions {
   display: grid;
@@ -845,9 +854,6 @@ html {
   .mosaic-grid {
     gap: 17px;
   }
-  .course-artboard {
-    height: 155px;
-  }
 }
 @media (max-width: 700px) {
   header.portal-header {
@@ -926,9 +932,6 @@ html {
   .remaining-notices {
     display: none;
   }
-  .course-artboard {
-    height: 195px;
-  }
   .course-content {
     padding: 15px 22px 23px;
   }
@@ -936,13 +939,13 @@ html {
     font-size: 25px;
   }
   .course-content .lesson-content h3 {
-    font-size: 17px;
+    font-size: 20px;
   }
   .course-info {
     font-size: 12px;
   }
   .course-info b {
-    font-size: 13px;
+    font-size: 15px;
   }
   .course-actions button {
     font-size: 13px;

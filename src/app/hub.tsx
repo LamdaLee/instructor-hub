@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, post, today, monday, moveDay, type Row } from "@/lib/client";
 import { isDate } from "@/lib/input.mjs";
-import { courseArt } from "@/lib/course-art";
 import { Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
 import Admin from "./admin";
 import ClassSettings from "./class-settings";
@@ -295,16 +294,6 @@ export default function Hub({
   );
   const courseCard = (c: Row, i: number) => (
     <article className={"course-card tone-" + (i % 7)} key={c.id}>
-      <div
-        className="course-artboard"
-        aria-hidden="true"
-        dangerouslySetInnerHTML={{
-          __html: courseArt({
-            id: c.id,
-            track: c.track.startsWith("AX") ? "AX" : c.track,
-          }),
-        }}
-      />
       <div className="course-content">
         <button
           className="course-location"
