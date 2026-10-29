@@ -1,0 +1,20 @@
+begin;
+insert into hub.operators(id,email,name,password_hash,role) values('00000000-0000-0000-0000-000000000071','room-admin@example.invalid','가상 관리자','unused','admin'),('00000000-0000-0000-0000-000000000072','room-member@example.invalid','가상 운영진','unused','member');
+insert into hub.sessions values(decode(repeat('71',32),'hex'),'00000000-0000-0000-0000-000000000071',now()+interval '1 hour'),(decode(repeat('72',32),'hex'),'00000000-0000-0000-0000-000000000072',now()+interval '1 hour');
+insert into hub.classes(id,region,cohort,track,name,starts_on,ends_on,active,source_code,manager,room) values('00000000-0000-0000-0000-000000000073','대전',97,'TEST-ROOM','가상 검증 반','2026-11-02','2026-11-06',true,'CLASS-SETTINGS-TEST','기존 매니저','기존 강의장');
+set local role hub_app;
+do $$ declare a bytea:=decode(repeat('71',32),'hex');m bytea:=decode(repeat('72',32),'hex');r jsonb;data jsonb:='{"id":"00000000-0000-0000-0000-000000000073","manager":"  새 매니저  ","room":"  새 강의장  ","name":"변경 금지","region":"부산","cohort":1}';c jsonb;begin
+ assert hub.api_save(null,'class_settings',data)->>'code'='session_expired','비로그인 수정 차단';
+ assert hub.api_save(m,'class_settings',data)->>'code'='forbidden','일반 운영진 수정 차단';
+ r:=hub.api_save(a,'class_settings',data);assert (r->>'ok')::boolean,'관리자 수정';
+ select x into c from jsonb_array_elements(hub.api_read(a,'options','{}')->'classes') x where x->>'id'=data->>'id';
+ assert c->>'manager'='새 매니저' and c->>'room'='새 강의장','저장 및 조회';
+ assert c->>'name'='가상 검증 반' and c->>'region'='대전' and c->>'cohort'='97' and c->>'source_code'='CLASS-SETTINGS-TEST','다른 과정 정보 보존';
+ assert c->>'starts_on'='2026-11-02' and c->>'ends_on'='2026-11-06' and (c->>'active')::boolean,'기간·활성 상태 보존';
+ r:=hub.api_save(a,'class_settings',data);assert r->>'changed'='false','같은 값은 불필요하게 기록하지 않음';
+ assert hub.api_save(a,'class_settings',data||'{"manager":null}')->>'code'='bad_request','잘못된 값 차단';
+ assert exists(select 1 from jsonb_array_elements(hub.api_read(a,'audit','{}')->'rows') x where x->>'action'='class_settings' and x->'before_value'->>'manager'='기존 매니저' and x->'after_value'->>'manager'='새 매니저'),'변경 전후 기록';
+ begin perform hub.save_catalog(a,'class',data);raise exception '이전 API 우회 허용';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+rollback;

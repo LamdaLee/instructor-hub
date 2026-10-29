@@ -1139,3 +1139,62 @@ html {
   vertical-align: middle;
   text-align: center;
 }
+
+.class-settings .settings-saved {
+  padding: 14px 18px;
+  background: #e3f6ec;
+  color: #28765c;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.class-settings td small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+/* 셀 작업은 수업 내용보다 작고 차분하게 표시한다. */
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.session-actions .session-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #6a8176;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  min-width: 32px;
+}
+.session-actions .session-action:hover {
+  background: #e7f0eb;
+  color: #2a705b;
+  filter: none;
+}
+.session-actions .session-action-delete {
+  color: #997d79;
+}
+.session-actions .session-action-delete:hover {
+  background: #f7eeec;
+  color: #a04d47;
+}
+@media (max-width: 700px) {
+  .session-actions {
+    gap: 10px;
+  }
+  .session-actions .session-action {
+    min-height: 32px;
+    min-width: 40px;
+    padding: 5px 7px;
+    font-size: 12px;
+  }
+}

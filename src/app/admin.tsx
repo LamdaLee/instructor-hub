@@ -112,6 +112,8 @@ export default function Admin({
               ["region", "지역"],
               ["cohort", "기수"],
               ["track", "트랙"],
+              ["manager", "담당 매니저", (r) => r.manager || "미등록"],
+              ["room", "기본 강의장", (r) => r.room || "미등록"],
               ["starts_on", "시작일"],
               ["ends_on", "종료일"],
               ["active", "상태", (r) => (r.active ? "활성" : "비활성")],

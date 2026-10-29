@@ -133,13 +133,11 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await card.getByRole("button", { name: "파일 수정", exact: true }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByLabel("작업자 이름").fill("가상 공개 수정자");
-  await dialog
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "E2E-교재.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4 public edit"),
-    });
+  await dialog.locator("input[type=file]").setInputFiles({
+    name: "E2E-교재.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 public edit"),
+  });
   await dialog.getByLabel("변경 사유").fill("비로그인 교재 교체");
   await dialog.getByRole("button", { name: "변경 저장", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -162,6 +160,32 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin?view=facilities");
+  await page
+    .getByRole("combobox", { name: "기수", exact: true })
+    .selectOption("998");
+  await page
+    .getByRole("button", { name: "강의장·매니저 수정", exact: true })
+    .click();
+  dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("담당 매니저", { exact: true })
+    .fill("E2E 담당 매니저");
+  await dialog
+    .getByLabel("기본 강의장", { exact: true })
+    .fill("E2E 기본 강의장");
+  await dialog.getByRole("button", { name: "저장", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".class-settings")).toContainText(
+    "E2E 담당 매니저",
+  );
+  await expect(page.locator(".class-settings")).toContainText(
+    "E2E 기본 강의장",
+  );
+  await page.goto("/?cohort=998");
+  await expect(page.locator(".course-card")).toContainText("E2E 담당 매니저");
+  await expect(page.locator(".course-card")).toContainText("E2E 기본 강의장");
+
   await page.goto(
     `/admin?view=slots&cohort=998&class_id=${classId}&from=2099-01-05&to=2099-01-09`,
   );
@@ -189,7 +213,7 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await expect(page.locator(".schedule-table")).toContainText("가상 준비사항");
   await expect(page.locator(".schedule-table")).toContainText("확정");
   await page.screenshot({
-    path: "/workspace/portal-timetable-verified.png",
+    path: test.info().outputPath("portal-timetable.png"),
     fullPage: true,
   });
   await page.getByLabel("시작일", { exact: true }).fill("2099-01-06");

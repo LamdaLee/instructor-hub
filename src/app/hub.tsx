@@ -6,6 +6,7 @@ import { isDate } from "@/lib/input.mjs";
 import { courseArt } from "@/lib/course-art";
 import { Modal, SlotEditor, InstructorEditor, PasteEditor } from "./components";
 import Admin from "./admin";
+import ClassSettings from "./class-settings";
 import {
   Materials,
   AnnouncementEditor,
@@ -262,15 +263,19 @@ export default function Hub({
       </div>
       {r.note && <div className="cell-note">{r.note}</div>}
       {isAdmin && (
-        <div className="inline">
+        <div className="session-actions">
           <button
-            className="secondary"
+            className="session-action"
+            aria-label="수업·메모 수정"
+            title="수업·메모 수정"
             onClick={() => setEditor({ kind: "slot", row: r })}
           >
-            수업·메모 수정
+            수정
           </button>
           <button
-            className="secondary"
+            className="session-action session-action-delete"
+            aria-label="수업 삭제"
+            title="수업 삭제"
             onClick={async () => {
               if (!confirm("수업을 삭제할까요? 변경 기록은 보존됩니다."))
                 return;
@@ -377,6 +382,7 @@ export default function Hub({
     ...(isAdmin
       ? [
           ["announcements", "공지 관리"],
+          ["facilities", "강의장·매니저"],
           ["manage", "과정·변경 기록"],
         ]
       : []),
@@ -455,7 +461,9 @@ export default function Hub({
             {isAdmin && <small>관리자 · {operator?.name}</small>}
           </div>
         )}
-        {!["materials", "announcements", "manage"].includes(view) && (
+        {!["materials", "announcements", "manage", "facilities"].includes(
+          view,
+        ) && (
           <section className="filters portal-filters" aria-label="조회 필터">
             {options &&
               [
@@ -919,6 +927,9 @@ export default function Hub({
             </div>
             <div className="notice-grid">{notices.map(noticeCard)}</div>
           </>
+        )}
+        {isAdmin && view === "facilities" && options && (
+          <ClassSettings options={options} onDone={refresh} />
         )}
         {isAdmin && view === "manage" && options && (
           <Admin options={options} revision={revision} onDone={refresh} />

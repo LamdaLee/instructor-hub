@@ -102,6 +102,13 @@ export function validSave(kind, data) {
           data.name.trim().length > 0 &&
           data.name.length <= 200))
     );
+  if (kind === "class_settings")
+    return (
+      isUuid(data.id) &&
+      ["manager", "room"].every(
+        (k) => typeof data[k] === "string" && data[k].length <= 200,
+      )
+    );
   if (kind === "announcement")
     return (
       (!!data.id && data.delete === true) ||
