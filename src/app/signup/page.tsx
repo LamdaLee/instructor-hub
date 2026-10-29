@@ -13,7 +13,7 @@ export default function Signup() {
       <h1>기관 계정 가입 신청</h1>
       <p>LAB4DX 담당자가 승인하면 입력한 이메일과 비밀번호로 로그인합니다.</p>
       <p>
-        <a href="/">공개 화면으로</a> · <a href="/admin/login">로그인</a>
+        <a href="/admin/login">로그인으로 돌아가기</a>
       </p>
       {done ? (
         <p role="status">

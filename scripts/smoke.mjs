@@ -47,7 +47,7 @@ try {
     [classId],
   );
   let res = await request("/api/read?view=instructors", null, false);
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 401);
   res = await request(
     "/api/login",
     { email, password },

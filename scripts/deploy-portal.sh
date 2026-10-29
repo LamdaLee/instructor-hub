@@ -37,15 +37,24 @@ if [ "$healthy" != true ]; then
 fi
 node --env-file=.env --input-type=module <<'JS'
 const origin=new URL(process.env.APP_ORIGIN).origin;
-for(const path of ['/api/health','/','/api/read?view=options','/api/read?view=materials']){
- const res=await fetch(origin+path,{signal:AbortSignal.timeout(15000),redirect:'manual'});
+const get=(path)=>fetch(origin+path,{signal:AbortSignal.timeout(15000),redirect:'manual'});
+for(const path of ['/api/health','/admin/login']){
+ const res=await get(path);
  if(res.status!==200)throw new Error(path+' 응답 '+res.status);
  if(path.startsWith('/api/')&&!(await res.json()).ok)throw new Error(path+' API 점검 실패');
  console.log('운영 점검 통과:',path);
 }
-const admin=await fetch(origin+'/admin',{signal:AbortSignal.timeout(15000),redirect:'manual'});
-if(![303,307,308].includes(admin.status)||!admin.headers.get('location')?.includes('/admin/login'))throw new Error('관리자 로그인 보호를 확인하세요.');
-console.log('운영 점검 통과: 관리자 로그인 보호');
+// 로그인하지 않으면 화면은 로그인으로 이동하고 API는 정보를 주지 않아야 한다.
+for(const path of ['/api/read?view=options','/api/read?view=dashboard','/api/read?view=materials']){
+ const res=await get(path);
+ if(res.status!==401)throw new Error(path+' 비로그인 응답 '+res.status);
+ console.log('운영 점검 통과: 비로그인 차단',path);
+}
+for(const path of ['/','/admin','/org']){
+ const res=await get(path);
+ if(![303,307,308].includes(res.status)||!res.headers.get('location')?.includes('/admin/login'))throw new Error(path+' 로그인 보호를 확인하세요.');
+}
+console.log('운영 점검 통과: 화면 로그인 보호');
 JS
 echo '배포 완료. /admin에서 기존 관리자 계정으로 로그인하세요.'
 echo '데이터 스냅샷은 ../hub-snapshots, 교재는 Docker hub_materials 볼륨에 보관됩니다.'

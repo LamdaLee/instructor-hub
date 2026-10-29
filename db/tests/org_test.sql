@@ -57,3 +57,34 @@ do $$ declare a bytea:=decode(repeat('91',32),'hex');c bytea:=decode(repeat('92'
 end $$;
 reset role;
 rollback;
+-- 포털에서도 aSSIST·CLIPS는 다른 기관 강사의 이름·연락처를 볼 수 없다.
+begin;
+insert into hub.operators(id,email,name,password_hash,role,organization) values
+ ('00000000-0000-0000-0000-000000000091','org-assist@example.invalid','가상 어시스트','unused','member','aSSIST'),
+ ('00000000-0000-0000-0000-000000000093','org-lge@example.invalid','가상 엘지','unused','member','LGE');
+insert into hub.sessions values(decode(repeat('91',32),'hex'),'00000000-0000-0000-0000-000000000091',now()+interval '1 hour'),
+ (decode(repeat('93',32),'hex'),'00000000-0000-0000-0000-000000000093',now()+interval '1 hour');
+insert into hub.classes(id,region,cohort,track,name) values('00000000-0000-0000-0000-000000000098','대전',97,'ORGTEST','가상 기관 반');
+insert into hub.instructors(id,name,organization,phone) values('00000000-0000-0000-0000-000000000095','가상 어시스트 강사','aSSIST','TEST-A'),('00000000-0000-0000-0000-000000000096','가상 클립스 강사','CLIPS','TEST-C');
+insert into hub.slots(class_id,day,instructor_id,instructor_name,organization) values
+ ('00000000-0000-0000-0000-000000000098','2099-02-01','00000000-0000-0000-0000-000000000095','가상 어시스트 강사','aSSIST'),
+ ('00000000-0000-0000-0000-000000000098','2099-02-02','00000000-0000-0000-0000-000000000096','가상 클립스 강사','CLIPS');
+set local role hub_app;
+do $$ declare a bytea:=decode(repeat('91',32),'hex');g bytea:=decode(repeat('93',32),'hex');r jsonb;begin
+ r:=hub.api_read(a,'slots','{"cohort":"97"}');
+ assert (select x->>'instructor_name' from jsonb_array_elements(r->'rows') x where x->>'day'='2099-02-01')='가상 어시스트 강사','자기 기관 수업 강사 표시';
+ assert (select x->>'instructor_name' from jsonb_array_elements(r->'rows') x where x->>'day'='2099-02-02')='','다른 기관 수업 강사 비공개';
+ assert (select (x->>'instructor_hidden')::boolean from jsonb_array_elements(r->'rows') x where x->>'day'='2099-02-02'),'비공개 표시';
+ assert (select x->>'subject' is null and x->>'organization'='CLIPS' from jsonb_array_elements(r->'rows') x where x->>'day'='2099-02-02'),'다른 기관 수업 일정은 표시';
+ r:=hub.api_read(a,'export','{"cohort":"97","contacts":"true"}');
+ assert not exists(select 1 from jsonb_array_elements(r->'rows') x where x->>'phone'='TEST-C'),'CSV 다른 기관 연락처 제외';
+ assert hub.api_read(a,'instructor','{"id":"00000000-0000-0000-0000-000000000096"}')->>'code'='not_found','다른 기관 강사 상세 차단';
+ assert hub.api_read(a,'instructor','{"id":"00000000-0000-0000-0000-000000000095"}')->'instructor'->>'phone'='TEST-A','자기 기관 강사 상세';
+ assert not exists(select 1 from jsonb_array_elements(hub.api_read(a,'instructors','{}')->'rows') x where x->>'organization'<>'aSSIST'),'포털 강사 목록 자기 기관만';
+ assert not exists(select 1 from jsonb_array_elements(hub.api_read(a,'options','{}')->'instructors') x where x->>'organization'<>'aSSIST'),'선택 목록 자기 기관만';
+ r:=hub.api_read(g,'slots','{"cohort":"97"}');
+ assert (select x->>'instructor_name' from jsonb_array_elements(r->'rows') x where x->>'day'='2099-02-02')='가상 클립스 강사','LGE 전체 강사 표시';
+ assert hub.api_read(g,'instructor','{"id":"00000000-0000-0000-0000-000000000096"}')->'instructor'->>'phone'='TEST-C','LGE 전체 연락처';
+end $$;
+reset role;
+rollback;

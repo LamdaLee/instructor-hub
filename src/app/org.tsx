@@ -118,6 +118,9 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
             </button>
           ))}
         </nav>
+        <a className="admin-access" href="/">
+          포털
+        </a>
         {operator.role === "admin" && (
           <a className="admin-access" href="/admin">
             관리자 화면
@@ -127,7 +130,7 @@ export default function OrgDesk({ operator }: { operator: OrgOperator }) {
           className="admin-access"
           onClick={async () => {
             await post("logout", {});
-            location.assign("/");
+            location.assign("/admin/login");
           }}
         >
           로그아웃

@@ -51,6 +51,8 @@ export async function DELETE(req: Request, ctx: Context) {
         ? 404
         : r.code === "bad_request"
           ? 400
-          : 403,
+          : r.code === "session_expired"
+            ? 401
+            : 403,
   });
 }

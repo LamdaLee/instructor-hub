@@ -199,7 +199,10 @@ export default function Hub({
       }}
       disabled={!r.instructor_id && view !== "instructors"}
     >
-      {r.linked_name || r.instructor_name || r.name || "미배정"}
+      {r.linked_name ||
+        r.instructor_name ||
+        r.name ||
+        (r.instructor_hidden ? "비공개" : "미배정")}
     </button>
   );
   const noticeCard = (n: Row, i: number) => (
@@ -397,26 +400,29 @@ export default function Hub({
             </button>
           ))}
         </nav>
-        {adminMode && (
-          <a className="admin-access" href="/org">
-            기관 승인
-          </a>
-        )}
         {adminMode ? (
-          <button
-            className="admin-access"
-            onClick={async () => {
-              await post("logout", {});
-              location.assign("/");
-            }}
-          >
-            로그아웃
-          </button>
-        ) : (
-          <a className="admin-access" href="/admin">
-            로그인
+          <a className="admin-access" href="/">
+            포털
           </a>
+        ) : (
+          operator?.role === "admin" && (
+            <a className="admin-access" href="/admin">
+              관리자 화면
+            </a>
+          )
         )}
+        <a className="admin-access" href="/org">
+          {adminMode ? "기관 승인" : "기관 업무"}
+        </a>
+        <button
+          className="admin-access"
+          onClick={async () => {
+            await post("logout", {});
+            location.assign("/admin/login");
+          }}
+        >
+          로그아웃
+        </button>
       </header>
       <main
         className={"portal-main " + (view === "dashboard" ? "portal-home" : "")}

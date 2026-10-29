@@ -52,7 +52,7 @@ test.afterAll(async () => {
   ]);
   await db.end();
 });
-test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리자 변경", async ({
+test("로그인 필수 포털·기간 시간표·강사 모달·교재 업로드·관리자 변경", async ({
   page,
   request,
   browser,
@@ -60,6 +60,19 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect(page).toHaveURL(/admin\/login/);
+  expect((await request.get("/api/read?view=options")).status()).toBe(401);
+  expect((await request.get("/api/read?view=dashboard")).status()).toBe(401);
+  const anonymousUpload = await request.post("/api/materials", {
+    headers: { Origin: origin },
+    multipart: { subject: "E2E 과목" },
+  });
+  expect(anonymousUpload.status()).toBe(401);
+  await page.getByLabel("이메일", { exact: true }).fill(email);
+  await page.getByLabel("비밀번호", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/");
   await expect(
     page.getByRole("combobox", { name: "기수", exact: true }),
@@ -84,7 +97,7 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   expect(page.url()).toContain("view=instructors");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  const invalidUpload = await request.post("/api/materials", {
+  const invalidUpload = await page.request.post("/api/materials", {
     headers: { Origin: origin },
     multipart: {
       subject: "E2E 과목",
@@ -99,7 +112,7 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
     },
   });
   expect(invalidUpload.status()).toBe(400);
-  const foreignUpload = await request.post("/api/materials", {
+  const foreignUpload = await page.request.post("/api/materials", {
     headers: { Origin: "https://foreign.example" },
     multipart: { subject: "E2E 과목" },
   });
@@ -114,13 +127,13 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await dialog
     .getByRole("combobox", { name: "강사", exact: true })
     .selectOption(person);
-  await dialog.getByLabel("등록자 이름").fill("가상 공개 등록자");
+  await dialog.getByLabel("등록자 이름").fill("가상 등록자");
   await dialog.locator("input[type=file]").setInputFiles({
     name: "E2E-교재.pdf",
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4 E2E"),
   });
-  await dialog.getByLabel("변경 사유").fill("비로그인 업로드 검증");
+  await dialog.getByLabel("변경 사유").fill("로그인 업로드 검증");
   await dialog.getByRole("button", { name: "업로드", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const card = page
@@ -132,13 +145,13 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   expect((await wait).suggestedFilename()).toBe("E2E-교재.pdf");
   await card.getByRole("button", { name: "파일 수정", exact: true }).click();
   dialog = page.getByRole("dialog");
-  await dialog.getByLabel("작업자 이름").fill("가상 공개 수정자");
+  await dialog.getByLabel("작업자 이름").fill("가상 수정자");
   await dialog.locator("input[type=file]").setInputFiles({
     name: "E2E-교재.pdf",
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4 public edit"),
   });
-  await dialog.getByLabel("변경 사유").fill("비로그인 교재 교체");
+  await dialog.getByLabel("변경 사유").fill("로그인 교재 교체");
   await dialog.getByRole("button", { name: "변경 저장", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const material = (
@@ -149,16 +162,12 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   ).rows[0];
   expect(
     (
-      await request.delete("/api/materials/" + material.id, {
+      await page.request.delete("/api/materials/" + material.id, {
         headers: { Origin: origin },
       })
     ).status(),
   ).toBe(400);
   await page.goto("/admin");
-  await expect(page).toHaveURL(/admin\/login/);
-  await page.getByLabel("이메일", { exact: true }).fill(email);
-  await page.getByLabel("비밀번호", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin?view=facilities");
   await page
@@ -239,21 +248,23 @@ test("공개 포털·기간 시간표·강사 모달·공개 업로드·관리�
   await expect(page.locator(".material-grid")).toContainText("E2E-수정.pdf");
   const publicPage = await browser.newPage();
   await publicPage.goto(origin + "/?view=materials");
-  await publicPage
+  await expect(publicPage).toHaveURL(/admin\/login/);
+  await publicPage.close();
+  await page.goto("/?view=materials");
+  await page
     .locator(".material-card")
     .filter({ hasText: "E2E-수정.pdf" })
     .getByRole("button", { name: "삭제", exact: true })
     .click();
-  const deletion = publicPage.getByRole("dialog");
-  await deletion.getByLabel("작업자 이름").fill("가상 공개 삭제자");
-  await deletion.getByLabel("삭제 사유").fill("비로그인 삭제 검증");
+  const deletion = page.getByRole("dialog");
+  await deletion.getByLabel("작업자 이름").fill("가상 삭제자");
+  await deletion.getByLabel("삭제 사유").fill("로그인 사용자 삭제 검증");
   await deletion
     .getByRole("button", { name: "삭제 확인", exact: true })
     .click();
-  await expect(publicPage.locator(".material-grid")).not.toContainText(
+  await expect(page.locator(".material-grid")).not.toContainText(
     "E2E-수정.pdf",
   );
-  await publicPage.close();
   await page.goto("/admin?view=announcements");
   await page.getByRole("button", { name: "공지 등록" }).click();
   dialog = page.getByRole("dialog");

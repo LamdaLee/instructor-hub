@@ -11,7 +11,7 @@ do $$ declare r jsonb; a bytea:=decode(repeat('11',32),'hex'); m bytea:=decode(r
  -- 앱 역할은 직접 테이블 및 내부 함수를 실행할 수 없다.
  begin perform 1 from hub.instructors; raise exception '직접 테이블 조회 허용됨'; exception when insufficient_privilege then null; end;
  begin perform hub.actor(a); raise exception '내부 함수 실행 허용됨'; exception when insufficient_privilege then null; end;
- r:=hub.api_read(a,'instructors','{}');assert (r->>'ok')::boolean,'공개 강사 조회';
+ r:=hub.api_read(a,'instructors','{}');assert r->>'code'='session_expired','비로그인 강사 조회 차단';
  r:=hub.api_login('hub-test-admin@example.invalid','wrong',a,'test-ip');assert r->>'code'='invalid_credentials','비밀번호 검증';
  r:=hub.api_login('hub-test-admin@example.invalid','test-password-2026',a,'test-ip');assert (r->>'ok')::boolean,'관리자 로그인';
  r:=hub.api_login('hub-test-member@example.invalid','test-password-2026',m,'test-ip');assert (r->>'ok')::boolean,'운영진 로그인';

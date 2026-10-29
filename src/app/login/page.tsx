@@ -11,11 +11,11 @@ export default function Login() {
       </div>
       <h1>로그인</h1>
       <p>
-        관리자는 일정과 자료를, 기관 계정은 강사 명단과 변경 신청을
-        관리합니다.
+        로그인한 계정만 시간표·강사·교재를 볼 수 있습니다. 기관 계정은 강사
+        변경 신청도 할 수 있습니다.
       </p>
       <p>
-        <a href="/">공개 화면으로</a> · <a href="/signup">기관 계정 가입 신청</a>
+        <a href="/signup">기관 계정 가입 신청</a>
       </p>
       <form
         onSubmit={async (e) => {
@@ -29,7 +29,7 @@ export default function Login() {
               password: d.get("password"),
             });
             location.assign(
-              result.operator?.role === "admin" ? "/admin" : "/org",
+              result.operator?.role === "admin" ? "/admin" : "/",
             );
           } catch (err) {
             setError((err as Error).message);
