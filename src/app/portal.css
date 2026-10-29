@@ -1314,3 +1314,10 @@ header.portal-header {
 .calendar-footer { justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 .date-picker button:focus-visible { outline: 3px solid #168577; outline-offset: 2px; }
 @media (max-width: 380px) { .calendar-dialog { padding: 16px 12px; } .calendar-grid { gap: 2px; } }
+
+/* 기수별 시간표의 트랙 경계를 날짜 열 끝까지 이어 표시한다. */
+.schedule-table tr.track-divider > * { border-top: 3px solid #b7d2c5; }
+.schedule-table .track-row { border-right: 2px solid #c6ded2; background: #edf5f0; }
+.schedule-table .track-row small { display: block; margin-top: 8px; line-height: 1.6; }
+.schedule-mobile details + details { margin-top: 16px; border-top: 3px solid #b7d2c5; }
+.schedule-mobile article + article { border-top: 2px solid #c6ded2; padding-top: 16px; margin-top: 16px; }

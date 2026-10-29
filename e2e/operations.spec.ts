@@ -147,3 +147,20 @@ test("큰 달력에서 월 이동·날짜 선택·취소와 모바일 폭 유지
   await expect(calendar).not.toBeVisible();
   await expect(trigger).toContainText(today().replaceAll("-", ". "));
 });
+
+test("지역별 시간표 기수 선택과 트랙 구분선", async ({ page, context }) => {
+  await login(context, "admin");
+  await page.goto("/admin?view=region&region=대전&cohort=976");
+  const cohort = page.getByRole("region", { name: "시간표 기수 선택" }).getByRole("combobox");
+  await expect(cohort).toHaveValue("976");
+  await expect(page.locator('.schedule-table tr[data-track="OPS"]')).toHaveCount(1);
+  await expect(page.locator('.schedule-table .track-row')).toContainText("976기");
+  const divider = await page.locator('.schedule-table tr[data-track="OPS"] td').first().evaluate(el => getComputedStyle(el).borderTopWidth);
+  expect(divider).toBe("3px");
+  await cohort.selectOption("all");
+  await expect(cohort).toHaveValue("all");
+  await cohort.selectOption("976");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "트랙별 보기", exact: true })).toBeVisible();
+  await expect(page.locator('.schedule-mobile summary').first()).toContainText("OPS · 976기");
+});

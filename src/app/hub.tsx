@@ -107,17 +107,17 @@ export default function Hub({
   if (view === "dashboard") clearFilters(["region", "cohort", "track", "organization", "class_id", "q"]);
   if (view === "slots") clearFilters(["region", "track", "organization", "class_id", "q"]);
   if (view === "region") {
-    clearFilters(["cohort", "track", "organization", "class_id", "q"]);
+    clearFilters(["track", "organization", "class_id", "q"]);
     filter.region = REGIONS.includes(filter.region) ? filter.region : REGIONS[0];
   }
   if (view === "instructors") clearFilters(["region", "cohort", "track", "class_id"]);
 
   if (
     !params.has("cohort") &&
-    view === "slots" &&
+    ["slots", "region"].includes(view) &&
     options
   ) {
-    const activeClasses = (options.classes as Row[]).filter((c) => c.active);
+    const activeClasses = (options.classes as Row[]).filter((c) => c.active && (!filter.region || c.region === filter.region));
     const selected = activeClasses.find((c) => c.id === filter.class_id);
     const latest = Math.max(0, ...activeClasses.map((c) => Number(c.cohort)));
     filter.cohort = selected
@@ -542,7 +542,7 @@ export default function Hub({
             </button>
           </section>
         )}
-        {view === "slots" && options && <section className="schedule-choices" aria-label="전체 시간표 기수 선택">
+        {["slots", "region"].includes(view) && options && <section className="schedule-choices" aria-label="시간표 기수 선택">
           <label>기수<select value={filter.cohort || "all"} onChange={e => update({ cohort: e.target.value })}>
             <option value="all">전체 기수</option>{([...new Set(options.classes.map((c: Row) => Number(c.cohort)))] as number[]).sort((a,b) => a-b).map(c => <option key={c} value={c}>{c}기</option>)}
           </select></label>
@@ -771,7 +771,7 @@ export default function Hub({
                 <thead>
                   <tr>
                     <th>지역</th>
-                    {view !== "region" && <th>트랙 · 반</th>}
+                    <th>트랙 · 반</th>
                     {displayDates.map((d) => (
                       <th key={d} className={d === today() ? "is-today" : undefined} aria-current={d === today() ? "date" : undefined}>
                         {d.slice(5).replace("-", ".")}
@@ -781,14 +781,15 @@ export default function Hub({
                   </tr>
                 </thead>
                 <tbody>
-                  {view === "region" ? <tr><th className="region-row" scope="row">{filter.region}</th>{displayDates.map(d => <td key={d} className={d === today() ? "is-today" : undefined}>{rows.filter(r => r.day === d).map(r => <div key={r.id}><small className="muted">{r.class_name}</small>{lessonCard(r)}</div>)}</td>)}</tr> : classes.map((c, i) => (
+                  {classes.map((c, i) => (
                     <tr
                       className={
                         i === 0 || classes[i - 1].region !== c.region
-                          ? "region-start"
-                          : ""
+                          ? "region-start track-divider"
+                          : "track-divider"
                       }
                       key={c.id}
+                      data-track={c.track}
                     >
                       {(i === 0 || classes[i - 1].region !== c.region) && (
                         <th
@@ -822,7 +823,7 @@ export default function Hub({
               </table>
             </div>
             <div className="schedule-mobile">
-              {view !== "region" && <div className="toolbar">
+              <div className="toolbar">
                 <button
                   className={mobile === "track" ? "" : "secondary"}
                   onClick={() => setMobile("track")}
@@ -835,25 +836,25 @@ export default function Hub({
                 >
                   날짜별 보기
                 </button>
-              </div>}
-              {((view !== "region" && mobile === "track") ? classes : displayDates).map(
+              </div>
+              {(mobile === "track" ? classes : displayDates).map(
                 (item: any, i) => (
                   <details
-                    key={view !== "region" && mobile === "track" ? item.id : item}
+                    key={mobile === "track" ? item.id : item}
                     open={i === 0}
                   >
-                    <summary className={(view === "region" || mobile === "date") && item === today() ? "is-today" : undefined}>
-                      {view !== "region" && mobile === "track"
+                    <summary className={(mobile === "date") && item === today() ? "is-today" : undefined}>
+                      {mobile === "track"
                         ? `${item.region} · ${trackName(item.track)} · ${item.cohort}기`
                         : item + " " + weekday(item) + "요일" + (item === today() ? " · 오늘" : "")}
                     </summary>
-                    {(view !== "region" && mobile === "track"
+                    {(mobile === "track"
                       ? displayDates.flatMap((d) => lessons(item, d))
                       : classes.flatMap((c) => lessons(c, item))
                     ).map((r) => (
                       <article key={r.id} className={r.day === today() ? "is-today" : undefined}>
                         <small>
-                          {r.day} · {r.class_name}
+                          {r.day} · {r.track} · {r.class_name}
                         </small>
                         {lessonCard(r)}
                       </article>
