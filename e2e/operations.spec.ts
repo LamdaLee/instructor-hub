@@ -202,6 +202,8 @@ test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", as
     const form = page.getByRole("dialog", { name: "담당 강사 추가", exact: true });
     await expect(form.getByRole("combobox", { name: "반", exact: true })).toBeDisabled();
     await form.getByLabel("강사 이름", { exact: true }).fill("가상 분담 강사 · LGE");
+    await expect(form.getByRole("combobox", { name: "강사 배정 상태", exact: true })).toHaveValue("");
+    await form.getByRole("combobox", { name: "강사 배정 상태", exact: true }).selectOption("확정");
     await form.getByLabel("담당 시작 시간", { exact: true }).fill("14:00");
     await form.getByLabel("담당 종료 시간", { exact: true }).fill("18:00");
     await form.getByRole("button", { name: "저장", exact: true }).click();
@@ -213,10 +215,12 @@ test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", as
     expect(persisted.rows[0]).toEqual({ total: 2, teachers: 2 });
     await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업·메모 수정", exact: true }).click();
     const edit = page.getByRole("dialog", { name: "시간표 수정", exact: true });
+    await edit.getByRole("combobox", { name: "강사 배정 상태", exact: true }).selectOption("");
     await edit.getByLabel("종료 시간 (선택)", { exact: true }).fill("17:00");
     await edit.getByRole("button", { name: "저장", exact: true }).click();
     await expect(edit).not.toBeVisible();
     await expect(desktop).toContainText("14:00~17:00");
+    await expect(desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).locator(".assignment")).toHaveCount(0);
     page.once("dialog", dialog => dialog.accept());
     await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업 삭제", exact: true }).click();
     await expect(desktop.locator(".lesson-content")).toHaveCount(1);

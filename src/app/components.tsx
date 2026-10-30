@@ -280,8 +280,9 @@ export function SlotEditor({
           강사 배정 상태
           <select
             name="assignment_status"
-            defaultValue={slot?.assignment_status || "임시"}
+            defaultValue={slot?.assignment_status || ""}
           >
+            <option value="">선택 안 함</option>
             <option>임시</option>
             <option>변경예정</option>
             <option>확정</option>
