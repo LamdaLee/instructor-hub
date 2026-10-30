@@ -249,3 +249,29 @@ test("관리자 강사 목록 삭제 버튼은 기록을 보존하며 명단에�
   const result = await db.query("select archived_at is not null as archived,(select count(*)::int from hub.slots where instructor_id=$1) as lessons from hub.instructors where id=$1", [person]);
   expect(result.rows[0]).toEqual({ archived: true, lessons: before.rows[0].lessons });
 });
+
+test("수업 추가는 현재 기수를 이어받고 다른 기수의 반을 숨김", async ({ page, context }) => {
+  const another = randomUUID();
+  await db.query("insert into hub.classes(id,region,cohort,track,name) values($1,'부산',975,'ALT','가상 다른 기수 반')", [another]);
+  try {
+    await login(context, "admin");
+    await page.goto("/admin?view=region&region=대전&cohort=976");
+    await page.getByRole("button", { name: "시간표 추가", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "시간표 추가", exact: true });
+    const cohort = dialog.getByRole("combobox", { name: "기수", exact: true });
+    const region = dialog.getByRole("combobox", { name: "지역", exact: true });
+    const classroom = dialog.getByRole("combobox", { name: "반", exact: true });
+    await expect(cohort).toHaveValue("976");
+    await expect(region).toHaveValue("대전");
+    await expect(classroom.locator("option")).toHaveCount(2);
+    await classroom.selectOption(classes.find(c => c.region === "대전")!.id);
+    await cohort.selectOption("975");
+    await expect(classroom).toHaveValue("");
+    await expect(classroom.locator("option")).toHaveCount(2);
+    await expect(classroom).toContainText("가상 다른 기수 반");
+    await expect(classroom).not.toContainText("976기");
+    await cohort.selectOption("");
+    await expect(classroom).toBeDisabled();
+    await expect(region).toBeDisabled();
+  } finally { await db.query("delete from hub.classes where id=$1", [another]); }
+});

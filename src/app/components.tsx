@@ -134,11 +134,15 @@ export function Modal({
 export function SlotEditor({
   slot,
   options,
+  initialCohort = "",
+  initialRegion = "",
   onDone,
   close,
 }: {
   slot?: Row;
   options: Row;
+  initialCohort?: string;
+  initialRegion?: string;
   onDone: () => void;
   close: () => void;
 }) {
@@ -146,6 +150,15 @@ export function SlotEditor({
   const [busy, setBusy] = useState(false);
   const editing = !!slot?.id;
   const additional = !!slot?.additional_instructor;
+  const activeClasses = (options.classes as Row[]).filter(c => c.active !== false);
+  const existingClass = (options.classes as Row[]).find(c => c.id === slot?.class_id);
+  const cohorts = [...new Set(activeClasses.map(c => Number(c.cohort)))].sort((a, b) => a - b);
+  const [cohort, setCohort] = useState(existingClass ? String(existingClass.cohort) : cohorts.includes(Number(initialCohort)) ? initialCohort : "");
+  const [region, setRegion] = useState(initialRegion);
+  const [classId, setClassId] = useState(slot?.class_id || "");
+  const cohortClasses = activeClasses.filter(c => String(c.cohort) === cohort);
+  const regions = [...new Set(cohortClasses.map(c => String(c.region)))];
+  const availableClasses = editing || additional ? (options.classes as Row[]).filter(c => c.id === slot?.class_id) : cohortClasses.filter(c => !region || c.region === region);
   return (
     <Modal title={additional ? "담당 강사 추가" : editing ? "시간표 수정" : "시간표 추가"} close={close}>
       <form
@@ -205,16 +218,25 @@ export function SlotEditor({
         }}
       >
         {additional && <p className="muted wide">추가할 강사를 선택하세요. 기존 수업 시간은 그대로 적용하며 기존 강사도 유지됩니다.</p>}
+        {!editing && !additional && <>
+          <label>기수<select required value={cohort} onChange={event => { setCohort(event.target.value); setRegion(""); setClassId(""); }}>
+            <option value="">기수 선택</option>{cohorts.map(value => <option key={value} value={value}>{value}기</option>)}
+          </select></label>
+          <label>지역<select value={region} disabled={!cohort} onChange={event => { setRegion(event.target.value); setClassId(""); }}>
+            <option value="">전체 지역</option>{regions.map(value => <option key={value} value={value}>{value}</option>)}
+          </select></label>
+        </>}
         <label>
           반
           <select
             name="class_id"
-            defaultValue={slot?.class_id ?? ""}
+            value={classId}
+            onChange={event => setClassId(event.target.value)}
             required
-            disabled={editing || additional}
+            disabled={editing || additional || !cohort}
           >
-            <option value="">반 선택</option>
-            {options.classes.map((c: Row) => (
+            <option value="">{cohort ? "반 선택" : "기수를 먼저 선택하세요"}</option>
+            {availableClasses.map((c: Row) => (
               <option key={c.id} value={c.id}>
                 {classLabel(c)}
               </option>

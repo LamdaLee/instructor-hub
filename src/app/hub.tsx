@@ -969,6 +969,8 @@ export default function Hub({
           <SlotEditor
             slot={editor.row}
             options={options}
+            initialCohort={filter.cohort}
+            initialRegion={filter.region}
             onDone={refresh}
             close={() => setEditor(undefined)}
           />
