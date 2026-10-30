@@ -204,7 +204,7 @@ export function SlotEditor({
           }
         }}
       >
-        {additional && <p className="muted wide">같은 날짜·반·과목에 담당 강사를 추가합니다. 기존 강사는 유지됩니다. 각 강사의 담당 시간을 입력하고 기존 강사의 시간도 나누어 설정하세요.</p>}
+        {additional && <p className="muted wide">추가할 강사를 선택하세요. 기존 수업 시간은 그대로 적용하며 기존 강사도 유지됩니다.</p>}
         <label>
           반
           <select
@@ -231,15 +231,14 @@ export function SlotEditor({
             disabled={editing || additional}
           />
         </label>
-        <label>
-          {additional ? "담당 시작 시간" : "시작 시간 (선택)"}
-          <input name="start_time" type="time" required={additional} defaultValue={slot?.start_time?.slice(0, 5) || ""} />
-        </label>
-        <label>
-          {additional ? "담당 종료 시간" : "종료 시간 (선택)"}
-          <input name="end_time" type="time" required={additional} defaultValue={slot?.end_time?.slice(0, 5) || ""} />
-        </label>
-        <p className="muted wide">시간을 모두 비우면 평택 외 수업은 09:00~18:00으로 표시합니다. 평택은 실제 시간을 별도로 입력하세요.</p>
+        {additional ? <>
+          <input type="hidden" name="start_time" value={slot?.start_time?.slice(0, 5) || ""} />
+          <input type="hidden" name="end_time" value={slot?.end_time?.slice(0, 5) || ""} />
+        </> : <>
+          <label>시작 시간 (선택)<input name="start_time" type="time" defaultValue={slot?.start_time?.slice(0, 5) || ""} /></label>
+          <label>종료 시간 (선택)<input name="end_time" type="time" defaultValue={slot?.end_time?.slice(0, 5) || ""} /></label>
+          <p className="muted wide">시간을 모두 비우면 평택 외 수업은 09:00~18:00으로 표시합니다. 평택은 실제 시간을 별도로 입력하세요.</p>
+        </>}
         <label>
           과목
           <input

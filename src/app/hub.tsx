@@ -324,7 +324,7 @@ export default function Hub({
           {r.kind === "수업" && <button type="button" className="session-action" onClick={() => setEditor({ kind: "slot", row: {
             ...r, id: undefined, period: crypto.randomUUID(), additional_instructor: true,
             instructor_id: "", instructor_name: "", linked_name: "", organization: "",
-            start_time: "", end_time: "", assignment_status: "",
+            assignment_status: "",
           } })}>강사 추가</button>}
           <button
             className="session-action session-action-delete"

@@ -187,7 +187,7 @@ test("포털에서 관리자 강사 정보 보완과 기관 계정 직접 수정
   expect(response.status()).toBe(403);
 });
 
-test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", async ({ page, context }) => {
+test("프로젝트 강사는 시간 입력 없이 추가하고 한 배정만 삭제", async ({ page, context }) => {
   const second = randomUUID();
   const cid = classes.find(c => c.region === "대전")!.id;
   const subject = `가상 분담 프로젝트 ${second}`;
@@ -204,13 +204,12 @@ test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", as
     await form.getByLabel("강사 이름", { exact: true }).fill("가상 분담 강사 · LGE");
     await expect(form.getByRole("combobox", { name: "강사 배정 상태", exact: true })).toHaveValue("");
     await form.getByRole("combobox", { name: "강사 배정 상태", exact: true }).selectOption("확정");
-    await form.getByLabel("담당 시작 시간", { exact: true }).fill("14:00");
-    await form.getByLabel("담당 종료 시간", { exact: true }).fill("18:00");
+    await expect(form.locator('input[type="time"]')).toHaveCount(0);
     await form.getByRole("button", { name: "저장", exact: true }).click();
     await expect(form).not.toBeVisible();
     await expect(desktop.locator(".lesson-content")).toHaveCount(2);
     await expect(desktop).toContainText("09:00~13:00");
-    await expect(desktop).toContainText("14:00~18:00");
+    await expect(desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" })).toContainText("09:00~13:00");
     const persisted = await db.query("select count(*)::int as total,count(distinct instructor_id)::int as teachers from hub.slots where class_id=$1", [cid]);
     expect(persisted.rows[0]).toEqual({ total: 2, teachers: 2 });
     await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업·메모 수정", exact: true }).click();
@@ -219,7 +218,7 @@ test("프로젝트 강사를 시간대로 추가하고 한 배정만 삭제", as
     await edit.getByLabel("종료 시간 (선택)", { exact: true }).fill("17:00");
     await edit.getByRole("button", { name: "저장", exact: true }).click();
     await expect(edit).not.toBeVisible();
-    await expect(desktop).toContainText("14:00~17:00");
+    await expect(desktop).toContainText("09:00~17:00");
     await expect(desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).locator(".assignment")).toHaveCount(0);
     page.once("dialog", dialog => dialog.accept());
     await desktop.locator(".lesson-content").filter({ hasText: "가상 분담 강사" }).getByRole("button", { name: "수업 삭제", exact: true }).click();
